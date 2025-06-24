@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCD3角度檢測系統 (優化版)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .card h3 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .status-item {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #4299e1;
+        }
+
+        .status-item.connected {
+            border-left-color: #48bb78;
+            background: #f0fff4;
+        }
+
+        .status-item.error {
+            border-left-color: #f56565;
+            background: #fffaf0;
+        }
+
+        .status-item h4 {
+            font-size: 0.9em;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .status-item .value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-primary { background: #4299e1; }
+        .btn-success { background: #48bb78; }
+        .btn-warning { background: #ed8936; }
+        .btn-danger { background: #f56565; }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            min-width: 120px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+
+        .result-display {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .result-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .result-item .label {
+            font-size: 0.9em;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .result-item .value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .performance-stats {
+            background: #e6fffa;
+            border: 1px solid #38b2ac;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .performance-stats h4 {
+            color: #2c7a7b;
+            margin-bottom: 10px;
+        }
+
+        .perf-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+        .perf-item {
+            text-align: center;
+            background: white;
+            padding: 8px;
+            border-radius: 6px;
+        }
+
+        .perf-item .label {
+            font-size: 0.8em;
+            color: #718096;
+        }
+
+        .perf-item .value {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #2c7a7b;
+        }
+
+        .log-container {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        .log-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log-container::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+
+        .log-container::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 4px;
+        }
+
+        .mode-selector {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .mode-selector h4 {
+            margin-bottom: 10px;
+            color: #4a5568;
+        }
+
+        .mode-options {
+            display: flex;
+            gap: 15px;
+        }
+
+        .mode-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .mode-option input[type="radio"] {
+            margin: 0;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success { background: #48bb78; }
+        .notification.error { background: #f56565; }
+        .notification.info { background: #4299e1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CCD3角度檢測系統</h1>
+            <p>高性能優化版 - 支援CASE與DR檢測</p>
+        </div>
+
+        <!-- 系統狀態 -->
+        <div class="card">
+            <h3>系統狀態</h3>
+            <div class="status-grid">
+                <div class="status-item" id="modbus-status">
+                    <h4>Modbus連接</h4>
+                    <div class="value">未連接</div>
+                </div>
+                <div class="status-item" id="camera-status">
+                    <h4>相機狀態</h4>
+                    <div class="value">未初始化</div>
+                </div>
+                <div class="status-item" id="system-status">
+                    <h4>系統狀態</h4>
+                    <div class="value">未就緒</div>
+                </div>
+                <div class="status-item" id="operation-count">
+                    <h4>成功次數</h4>
+                    <div class="value">0</div>
+                </div>
+                <div class="status-item" id="error-count">
+                    <h4>錯誤次數</h4>
+                    <div class="value">0</div>
+                </div>
+            </div>
+            
+            <!-- 快速初始化按鈕 -->
+            <div class="button-group" style="margin-top: 15px;">
+                <button class="btn btn-success" onclick="quickInitialize()" id="quick-init-btn">一鍵初始化系統</button>
+                <button class="btn btn-primary" onclick="getStatus()">刷新狀態</button>
+            </div>
+        </div>
+
+        <!-- 連接設置 -->
+        <div class="card">
+            <h3>連接設置</h3>
+            <div class="input-group">
+                <label>Modbus服務器:</label>
+                <input type="text" id="modbus-ip" value="127.0.0.1" placeholder="IP地址">
+                <input type="number" id="modbus-port" value="502" placeholder="端口" style="max-width: 100px;">
+                <button class="btn btn-primary" onclick="connectModbus()">連接Modbus</button>
+            </div>
+            <div class="input-group">
+                <label>相機IP:</label>
+                <input type="text" id="camera-ip" value="192.168.1.10" placeholder="相機IP地址">
+                <button class="btn btn-success" onclick="initializeCamera()">初始化相機</button>
+            </div>
+        </div>
+
+        <!-- 檢測控制 -->
+        <div class="card">
+            <h3>角度檢測控制</h3>
+            
+            <div class="mode-selector">
+                <h4>檢測模式</h4>
+                <div class="mode-options">
+                    <div class="mode-option">
+                        <input type="radio" id="mode-case" name="detection-mode" value="0" checked>
+                        <label for="mode-case">CASE模式 (適用於CASE物件)</label>
+                    </div>
+                    <div class="mode-option">
+                        <input type="radio" id="mode-dr" name="detection-mode" value="1">
+                        <label for="mode-dr">DR模式 (適用於DR物件)</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-warning" onclick="captureAndDetect()" id="detect-btn">拍照+角度檢測</button>
+                <button class="btn btn-primary" onclick="getStatus()">更新狀態</button>
+                <button class="btn btn-danger" onclick="reinitialize()">重新初始化</button>
+            </div>
+            
+            <!-- 檢測前提醒 -->
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 10px; margin-top: 10px;">
+                <p style="margin: 0; color: #856404; font-size: 0.9em;">
+                    📌 檢測前請確保：1) Modbus已連接 2) 相機已初始化 3) 系統狀態為"就緒"
+                </p>
+            </div>
+        </div>
+
+        <!-- 檢測結果 -->
+        <div class="card">
+            <h3>檢測結果</h3>
+            <div class="result-display" id="result-display">
+                <p style="text-align: center; color: #718096;">尚未執行檢測</p>
+            </div>
+        </div>
+
+        <!-- 性能統計 -->
+        <div class="card">
+            <h3>性能統計</h3>
+            <div class="performance-stats" id="performance-stats">
+                <h4>處理時間統計 (最近100次)</h4>
+                <div class="perf-grid" id="perf-grid">
+                    <div class="perf-item">
+                        <div class="label">平均總時間</div>
+                        <div class="value">-- ms</div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="label">平均拍照時間</div>
+                        <div class="value">-- ms</div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="label">平均處理時間</div>
+                        <div class="value">-- ms</div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="label">最快時間</div>
+                        <div class="value">-- ms</div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="label">最慢時間</div>
+                        <div class="value">-- ms</div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="label">樣本數量</div>
+                        <div class="value">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 調試資訊 -->
+        <div class="card">
+            <h3>調試資訊</h3>
+            <div class="button-group">
+                <button class="btn btn-warning" onclick="toggleDebugSaving()">切換調試保存</button>
+            </div>
+            <div style="background: #e6fffa; border: 1px solid #38b2ac; border-radius: 8px; padding: 15px; margin-top: 15px;">
+                <h4 style="color: #2c7a7b; margin-bottom: 10px;">調試圖像說明</h4>
+                <p style="margin: 5px 0; color: #2d3748;">📁 圖像保存位置: 程式目錄/debug_images/</p>
+                <p style="margin: 5px 0; color: #2d3748;">🖼️ 自動生成檔案:</p>
+                <ul style="margin: 10px 0 0 20px; color: #2d3748;">
+                    <li><strong>1_original.jpg</strong> - 原始相機圖像</li>
+                    <li><strong>2_binary.jpg</strong> - 二值化處理圖像</li>
+                    <li><strong>3_result.jpg</strong> - 角度檢測結果圖像</li>
+                </ul>
+                <p style="margin: 10px 0 0 0; color: #718096; font-size: 0.9em;">每次檢測會自動覆蓋舊圖像，方便分析檢測效果</p>
+            </div>
+        </div>
+
+        <!-- 系統日誌 -->
+        <div class="card">
+            <h3>系統日誌</h3>
+            <div class="log-container" id="log-container">
+                <div>系統啟動中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSocket();
+            getStatus();
+            getPerformanceStats();
+            
+            // 定期更新狀態和性能統計
+            setInterval(getStatus, 3000);
+            setInterval(getPerformanceStats, 5000);
+        });
+
+        function initializeSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                addLog('WebSocket連接成功', 'success');
+            });
+            
+            socket.on('status_update', function(data) {
+                addLog('收到狀態更新: ' + JSON.stringify(data), 'info');
+            });
+            
+            socket.on('disconnect', function() {
+                addLog('WebSocket連接斷開', 'error');
+            });
+        }
+
+        async function connectModbus() {
+            const ip = document.getElementById('modbus-ip').value;
+            const port = document.getElementById('modbus-port').value;
+            
+            try {
+                const response = await fetch('/api/modbus/set_server', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: ip, port: parseInt(port) })
+                });
+                
+                if (!response.ok) throw new Error('設置服務器失敗');
+                
+                const result = await response.json();
+                addLog(result.message, 'success');
+                
+                // 連接到服務器
+                const connectResponse = await fetch('/api/modbus/connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!connectResponse.ok) throw new Error('連接失敗');
+                
+                const connectResult = await connectResponse.json();
+                addLog(connectResult.message, connectResult.success ? 'success' : 'error');
+                showNotification(connectResult.message, connectResult.success ? 'success' : 'error');
+                
+                getStatus();
+            } catch (error) {
+                addLog('Modbus連接錯誤: ' + error.message, 'error');
+                showNotification('連接失敗: ' + error.message, 'error');
+            }
+        }
+
+        async function initializeCamera() {
+            const ip = document.getElementById('camera-ip').value;
+            
+            try {
+                const response = await fetch('/api/initialize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: ip })
+                });
+                
+                if (!response.ok) throw new Error('初始化請求失敗');
+                
+                const result = await response.json();
+                addLog(result.message, result.success ? 'success' : 'error');
+                showNotification(result.message, result.success ? 'success' : 'error');
+                
+                getStatus();
+            } catch (error) {
+                addLog('相機初始化錯誤: ' + error.message, 'error');
+                showNotification('初始化失敗: ' + error.message, 'error');
+            }
+        }
+
+        async function captureAndDetect() {
+            const mode = document.querySelector('input[name="detection-mode"]:checked').value;
+            const modeText = mode === "0" ? "CASE" : "DR";
+            const detectBtn = document.getElementById('detect-btn');
+            const originalText = detectBtn.textContent;
+            
+            // 檢查系統狀態
+            const statusResponse = await fetch('/api/status');
+            if (statusResponse.ok) {
+                const status = await statusResponse.json();
+                if (!status.modbus_connected) {
+                    showNotification('請先連接Modbus服務器', 'error');
+                    return;
+                }
+                if (!status.camera_initialized) {
+                    showNotification('請先初始化相機', 'error');
+                    return;
+                }
+                if (!status.ready) {
+                    showNotification('系統未就緒，無法執行檢測', 'error');
+                    return;
+                }
+            }
+            
+            detectBtn.textContent = '檢測中...';
+            detectBtn.disabled = true;
+            
+            addLog('開始' + modeText + '模式角度檢測...', 'info');
+            
+            try {
+                const response = await fetch('/api/capture_and_detect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: parseInt(mode) })
+                });
+                
+                if (!response.ok) throw new Error('檢測請求失敗');
+                
+                const result = await response.json();
+                displayResult(result);
+                
+                if (result.success) {
+                    addLog('角度檢測成功: 角度=' + (result.angle ? result.angle.toFixed(2) : 'N/A') + '°, 總耗時=' + (result.total_time ? result.total_time.toFixed(1) : 'N/A') + 'ms', 'success');
+                    showNotification('角度檢測完成', 'success');
+                } else {
+                    addLog('角度檢測失敗: ' + result.error, 'error');
+                    showNotification('檢測失敗: ' + result.error, 'error');
+                }
+                
+                getStatus();
+                getPerformanceStats();
+                
+            } catch (error) {
+                addLog('檢測過程錯誤: ' + error.message, 'error');
+                showNotification('檢測失敗: ' + error.message, 'error');
+            } finally {
+                detectBtn.textContent = originalText;
+                detectBtn.disabled = false;
+            }
+        }
+
+        async function getStatus() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) throw new Error('狀態獲取失敗');
+                
+                const status = await response.json();
+                updateStatusDisplay(status);
+            } catch (error) {
+                addLog('狀態更新錯誤: ' + error.message, 'error');
+            }
+        }
+
+        async function getPerformanceStats() {
+            try {
+                const response = await fetch('/api/performance_stats');
+                if (!response.ok) throw new Error('性能統計獲取失敗');
+                
+                const stats = await response.json();
+                updatePerformanceDisplay(stats);
+            } catch (error) {
+                // 靜默處理性能統計錯誤
+            }
+        }
+
+        async function reinitialize() {
+            try {
+                const response = await fetch('/api/initialize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: document.getElementById('camera-ip').value })
+                });
+                
+                if (!response.ok) throw new Error('重新初始化失敗');
+                
+                const result = await response.json();
+                addLog(result.message, result.success ? 'success' : 'error');
+                showNotification(result.message, result.success ? 'success' : 'error');
+                
+                getStatus();
+            } catch (error) {
+                addLog('重新初始化錯誤: ' + error.message, 'error');
+                showNotification('重新初始化失敗: ' + error.message, 'error');
+            }
+        }
+
+        async function quickInitialize() {
+            const btn = document.getElementById('quick-init-btn');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.textContent = '初始化中...';
+                btn.disabled = true;
+                
+                addLog('開始一鍵初始化系統...', 'info');
+                
+                // 1. 連接Modbus
+                addLog('步驟1: 連接Modbus服務器...', 'info');
+                const modbusResponse = await fetch('/api/modbus/set_server', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: '127.0.0.1', port: 502 })
+                });
+                
+                if (modbusResponse.ok) {
+                    const connectResponse = await fetch('/api/modbus/connect', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (connectResponse.ok) {
+                        const result = await connectResponse.json();
+                        addLog('✓ Modbus連接成功', 'success');
+                    } else {
+                        throw new Error('Modbus連接失敗');
+                    }
+                } else {
+                    throw new Error('Modbus設置失敗');
+                }
+                
+                // 等待1秒
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // 2. 初始化相機
+                addLog('步驟2: 初始化相機...', 'info');
+                const cameraResponse = await fetch('/api/initialize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: '192.168.1.10' })
+                });
+                
+                if (cameraResponse.ok) {
+                    const result = await cameraResponse.json();
+                    if (result.success) {
+                        addLog('✓ 相機初始化成功', 'success');
+                        showNotification('系統初始化完成！可以開始檢測', 'success');
+                    } else {
+                        throw new Error('相機初始化失敗: ' + result.message);
+                    }
+                } else {
+                    throw new Error('相機初始化請求失敗');
+                }
+                
+                // 更新狀態
+                getStatus();
+                
+            } catch (error) {
+                addLog('初始化失敗: ' + error.message, 'error');
+                showNotification('初始化失敗: ' + error.message, 'error');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function toggleDebugSaving() {
+            try {
+                const response = await fetch('/api/toggle_debug', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enable: true })
+                });
+                
+                if (!response.ok) throw new Error('切換調試模式失敗');
+                
+                const result = await response.json();
+                addLog(result.message, 'info');
+                showNotification(result.message, 'info');
+            } catch (error) {
+                addLog('切換調試模式失敗: ' + error.message, 'error');
+                showNotification('切換失敗: ' + error.message, 'error');
+            }
+        }
+
+        function updateStatusDisplay(status) {
+            // Modbus狀態
+            const modbusElement = document.getElementById('modbus-status');
+            modbusElement.className = 'status-item ' + (status.modbus_connected ? 'connected' : 'error');
+            modbusElement.querySelector('.value').textContent = status.modbus_connected ? '已連接' : '未連接';
+            
+            // 相機狀態
+            const cameraElement = document.getElementById('camera-status');
+            cameraElement.className = 'status-item ' + (status.camera_initialized ? 'connected' : 'error');
+            cameraElement.querySelector('.value').textContent = status.camera_initialized ? '已初始化' : '未初始化';
+            
+            // 系統狀態
+            const systemElement = document.getElementById('system-status');
+            let systemStatus = '未知';
+            let systemClass = '';
+            
+            if (status.alarm) {
+                systemStatus = '警報';
+                systemClass = 'error';
+            } else if (status.running) {
+                systemStatus = '運行中';
+                systemClass = 'connected';
+            } else if (status.ready) {
+                systemStatus = '就緒';
+                systemClass = 'connected';
+            } else {
+                systemStatus = '未就緒';
+                systemClass = '';
+            }
+            
+            systemElement.className = 'status-item ' + systemClass;
+            systemElement.querySelector('.value').textContent = systemStatus;
+            
+            // 統計資訊
+            document.getElementById('operation-count').querySelector('.value').textContent = status.operation_count || 0;
+            document.getElementById('error-count').querySelector('.value').textContent = status.error_count || 0;
+        }
+
+        function updatePerformanceDisplay(stats) {
+            const perfGrid = document.getElementById('perf-grid');
+            const items = perfGrid.querySelectorAll('.perf-item .value');
+            
+            if (stats && stats.sample_count > 0) {
+                items[0].textContent = (stats.avg_total_time ? stats.avg_total_time.toFixed(1) : '0') + ' ms';
+                items[1].textContent = (stats.avg_capture_time ? stats.avg_capture_time.toFixed(1) : '0') + ' ms';
+                items[2].textContent = (stats.avg_process_time ? stats.avg_process_time.toFixed(1) : '0') + ' ms';
+                items[3].textContent = (stats.min_total_time ? stats.min_total_time.toFixed(1) : '0') + ' ms';
+                items[4].textContent = (stats.max_total_time ? stats.max_total_time.toFixed(1) : '0') + ' ms';
+                items[5].textContent = stats.sample_count.toString();
+            } else {
+                items.forEach(item => item.textContent = '-- ms');
+                items[5].textContent = '0';
+            }
+        }
+
+        function displayResult(result) {
+            const container = document.getElementById('result-display');
+            
+            if (result.success) {
+                let html = '<div class="result-grid">';
+                html += '<div class="result-item"><div class="label">檢測狀態</div><div class="value" style="color: #48bb78;">成功</div></div>';
+                html += '<div class="result-item"><div class="label">中心座標</div><div class="value">(' + (result.center ? result.center[0] + ', ' + result.center[1] : 'N/A') + ')</div></div>';
+                html += '<div class="result-item"><div class="label">角度</div><div class="value">' + (result.angle ? result.angle.toFixed(2) + '°' : 'N/A') + '</div></div>';
+                html += '<div class="result-item"><div class="label">拍照時間</div><div class="value">' + (result.capture_time ? result.capture_time.toFixed(1) : '0') + ' ms</div></div>';
+                html += '<div class="result-item"><div class="label">處理時間</div><div class="value">' + (result.processing_time ? result.processing_time.toFixed(1) : '0') + ' ms</div></div>';
+                html += '<div class="result-item"><div class="label">總時間</div><div class="value">' + (result.total_time ? result.total_time.toFixed(1) : '0') + ' ms</div></div>';
+                
+                if (result.major_axis) {
+                    html += '<div class="result-item"><div class="label">長軸</div><div class="value">' + result.major_axis.toFixed(1) + ' px</div></div>';
+                    html += '<div class="result-item"><div class="label">短軸</div><div class="value">' + result.minor_axis.toFixed(1) + ' px</div></div>';
+                }
+                
+                if (result.rect_width) {
+                    html += '<div class="result-item"><div class="label">矩形寬度</div><div class="value">' + result.rect_width.toFixed(1) + ' px</div></div>';
+                    html += '<div class="result-item"><div class="label">矩形高度</div><div class="value">' + result.rect_height.toFixed(1) + ' px</div></div>';
+                }
+                
+                if (result.contour_area) {
+                    html += '<div class="result-item"><div class="label">輪廓面積</div><div class="value">' + result.contour_area.toFixed(0) + ' px²</div></div>';
+                }
+                
+                html += '</div>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<div class="result-grid">' +
+                    '<div class="result-item"><div class="label">檢測狀態</div><div class="value" style="color: #f56565;">失敗</div></div>' +
+                    '<div class="result-item"><div class="label">錯誤訊息</div><div class="value">' + (result.error || '未知錯誤') + '</div></div>' +
+                    '<div class="result-item"><div class="label">總時間</div><div class="value">' + (result.total_time ? result.total_time.toFixed(1) : '0') + ' ms</div></div>' +
+                    '</div>';
+            }
+        }
+
+        function addLog(message, type) {
+            const container = document.getElementById('log-container');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            
+            let color = '#e2e8f0';
+            if (type === 'success') color = '#68d391';
+            else if (type === 'error') color = '#fc8181';
+            else if (type === 'info') color = '#63b3ed';
+            
+            logEntry.innerHTML = '<span style="color: #a0aec0;">[' + timestamp + ']</span> <span style="color: ' + color + ';">' + message + '</span>';
+            container.appendChild(logEntry);
+            container.scrollTop = container.scrollHeight;
+            
+            // 保持最多100條日誌
+            while (container.children.length > 100) {
+                container.removeChild(container.firstChild);
+            }
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = 'notification ' + type;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(function() { notification.classList.add('show'); }, 100);
+            setTimeout(function() {
+                notification.classList.remove('show');
+                setTimeout(function() { 
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification); 
+                    }
+                }, 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

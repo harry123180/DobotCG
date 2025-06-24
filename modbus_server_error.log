@@ -1,0 +1,20 @@
+2025-06-17 17:25:01,314 - ERROR - default_exception_handler:1833 - Task was destroyed but it is pending!
+task: <Task pending name='Task-75695247' coro=<ServerRequestHandler.handle_request() running at C:\Users\user\anaconda3\envs\ROBOT\Lib\site-packages\pymodbus\server\requesthandler.py:95> cb=[_chain_future.<locals>._call_set_state() at C:\Users\user\anaconda3\envs\ROBOT\Lib\asyncio\futures.py:396]>
+2025-06-17 17:25:01,314 - ERROR - default_exception_handler:1833 - Task was destroyed but it is pending!
+task: <Task pending name='Task-75695248' coro=<ServerRequestHandler.handle_request() running at C:\Users\user\anaconda3\envs\ROBOT\Lib\site-packages\pymodbus\server\requesthandler.py:95> cb=[_chain_future.<locals>._call_set_state() at C:\Users\user\anaconda3\envs\ROBOT\Lib\asyncio\futures.py:396]>
+2025-06-17 17:25:01,315 - ERROR - default_exception_handler:1833 - Task was destroyed but it is pending!
+task: <Task pending name='Task-75695249' coro=<ServerRequestHandler.handle_request() running at C:\Users\user\anaconda3\envs\ROBOT\Lib\site-packages\pymodbus\server\requesthandler.py:95> cb=[_chain_future.<locals>._call_set_state() at C:\Users\user\anaconda3\envs\ROBOT\Lib\asyncio\futures.py:396]>
+2025-06-17 17:25:01,315 - ERROR - default_exception_handler:1833 - Task was destroyed but it is pending!
+task: <Task pending name='Task-75695250' coro=<ServerRequestHandler.handle_request() running at C:\Users\user\anaconda3\envs\ROBOT\Lib\site-packages\pymodbus\server\requesthandler.py:95> cb=[_chain_future.<locals>._call_set_state() at C:\Users\user\anaconda3\envs\ROBOT\Lib\asyncio\futures.py:396]>
+2025-06-17 17:25:01,315 - ERROR - default_exception_handler:1833 - Task was destroyed but it is pending!
+task: <Task pending name='Task-75695251' coro=<ServerRequestHandler.handle_request() running at C:\Users\user\anaconda3\envs\ROBOT\Lib\site-packages\pymodbus\server\requesthandler.py:95> cb=[_chain_future.<locals>._call_set_state() at C:\Users\user\anaconda3\envs\ROBOT\Lib\asyncio\futures.py:396]>
+2025-06-17 17:25:01,315 - ERROR - default_exception_handler:1833 - Task was destroyed but it is pending!
+task: <Task pending name='Task-75695252' coro=<ServerRequestHandler.handle_request() running at C:\Users\user\anaconda3\envs\ROBOT\Lib\site-packages\pymodbus\server\requesthandler.py:95> cb=[_chain_future.<locals>._call_set_state() at C:\Users\user\anaconda3\envs\ROBOT\Lib\asyncio\futures.py:396]>
+2025-06-17 17:25:01,315 - ERROR - default_exception_handler:1833 - Task was destroyed but it is pending!
+task: <Task pending name='Task-75695253' coro=<ServerRequestHandler.handle_request() running at C:\Users\user\anaconda3\envs\ROBOT\Lib\site-packages\pymodbus\server\requesthandler.py:95> cb=[_chain_future.<locals>._call_set_state() at C:\Users\user\anaconda3\envs\ROBOT\Lib\asyncio\futures.py:396]>
+2025-06-17 17:25:01,316 - ERROR - default_exception_handler:1833 - Task was destroyed but it is pending!
+task: <Task pending name='Task-75695254' coro=<ServerRequestHandler.handle_request() running at C:\Users\user\anaconda3\envs\ROBOT\Lib\site-packages\pymodbus\server\requesthandler.py:95> cb=[_chain_future.<locals>._call_set_state() at C:\Users\user\anaconda3\envs\ROBOT\Lib\asyncio\futures.py:396]>
+2025-06-17 17:25:01,316 - ERROR - default_exception_handler:1833 - Task was destroyed but it is pending!
+task: <Task pending name='Task-75695255' coro=<ServerRequestHandler.handle_request() running at C:\Users\user\anaconda3\envs\ROBOT\Lib\site-packages\pymodbus\server\requesthandler.py:95> cb=[_chain_future.<locals>._call_set_state() at C:\Users\user\anaconda3\envs\ROBOT\Lib\asyncio\futures.py:396]>
+2025-06-17 17:25:01,316 - ERROR - default_exception_handler:1833 - Task was destroyed but it is pending!
+task: <Task pending name='Task-75695256' coro=<ServerRequestHandler.handle_request() running at C:\Users\user\anaconda3\envs\ROBOT\Lib\site-packages\pymodbus\server\requesthandler.py:95> cb=[_chain_future.<locals>._call_set_state() at C:\Users\user\anaconda3\envs\ROBOT\Lib\asyncio\futures.py:396]>

@@ -1,0 +1,41 @@
+{
+  "module_id": "RS485Gateway監控",
+  "modbus_tcp": {
+    "host": "127.0.0.1",
+    "port": 502,
+    "unit_id": 1,
+    "timeout": 1.0
+  },
+  "web_server": {
+    "host": "0.0.0.0",
+    "port": 5055,
+    "debug": false
+  },
+  "ui_settings": {
+    "refresh_interval": 2.0,
+    "manual_mode": false,
+    "show_debug_info": true
+  },
+  "devices": {
+    "XC100": {
+      "name": "XC100升降模組",
+      "enabled": true,
+      "color": "#3182ce"
+    },
+    "PGC": {
+      "name": "PGC夾爪",
+      "enabled": true,
+      "color": "#38a169"
+    },
+    "PGHL": {
+      "name": "PGHL夾爪",
+      "enabled": true,
+      "color": "#d69e2e"
+    },
+    "PGE": {
+      "name": "PGE夾爪",
+      "enabled": true,
+      "color": "#e53e3e"
+    }
+  }
+}

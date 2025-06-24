@@ -1,0 +1,33 @@
+{
+  "module_id": "Angle_Adjustment_System",
+  "modbus_tcp": {
+    "host": "127.0.0.1",
+    "port": 502,
+    "unit_id": 1,
+    "timeout": 3.0
+  },
+  "motor_rtu": {
+    "port": "COM5",
+    "baudrate": 115200,
+    "parity": "N",
+    "stopbits": 1,
+    "bytesize": 8,
+    "timeout": 1.0,
+    "slave_id": 3
+  },
+  "modbus_mapping": {
+    "base_address": 700,
+    "ccd3_base_address": 800
+  },
+  "angle_calculation": {
+    "target_angle": 90.0,
+    "motor_base_position": 9000,
+    "angle_multiplier": 10
+  },
+  "timing": {
+    "handshake_interval": 0.05,
+    "motor_settle_delay": 0.1,
+    "ccd_timeout": 10.0,
+    "motor_timeout": 30.0
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "modbus": {
+    "server_ip": "127.0.0.1",
+    "server_port": 502,
+    "timeout": 3.0
+  },
+  "web_server": {
+    "host": "0.0.0.0",
+    "port": 5009,
+    "debug": false
+  },
+  "monitoring": {
+    "refresh_interval": 1.0,
+    "auto_start": true
+  },
+  "ui_settings": {
+    "theme": "light",
+    "show_advanced": false
+  }
+}

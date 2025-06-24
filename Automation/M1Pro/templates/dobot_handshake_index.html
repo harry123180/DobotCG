@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dobot狀態機交握控制器 (增強版)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 2000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e6ed;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            border-radius: 15px;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e74c3c;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: #27ae60;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .handshake-status-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-left: 20px;
+        }
+
+        .handshake-bit {
+            text-align: center;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .bit-active {
+            background: #27ae60;
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+        }
+
+        .bit-inactive {
+            background: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .control-panel, .status-panel, .speed-panel, .ccd1-panel, .angle-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e6ed;
+        }
+
+        .control-panel {
+            border-left: 4px solid #3498db;
+        }
+
+        .status-panel {
+            border-left: 4px solid #27ae60;
+        }
+
+        .speed-panel {
+            border-left: 4px solid #9b59b6;
+        }
+
+        .ccd1-panel {
+            border-left: 4px solid #f39c12;
+        }
+
+        .angle-panel {
+            border-left: 4px solid #e74c3c;
+        }
+
+        .panel-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .status-panel .panel-title {
+            border-bottom-color: #27ae60;
+        }
+
+        .speed-panel .panel-title {
+            border-bottom-color: #9b59b6;
+        }
+
+        .ccd1-panel .panel-title {
+            border-bottom-color: #f39c12;
+        }
+
+        .angle-panel .panel-title {
+            border-bottom-color: #e74c3c;
+        }
+
+        .flow-buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .handshake-btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            position: relative;
+        }
+
+        .handshake-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .handshake-btn.vp-pickup {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .handshake-btn.vp-pickup::after {
+            content: '440=1';
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            background: rgba(255,255,255,0.3);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+
+        .handshake-btn.unload-flow {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .handshake-btn.unload-flow::after {
+            content: '441=1';
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            background: rgba(255,255,255,0.3);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+
+        .handshake-btn.manual {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+
+        .handshake-btn.manual::after {
+            content: '444';
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            background: rgba(255,255,255,0.3);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+
+        .handshake-btn.system {
+            background: linear-gradient(135deg, #ffa726 0%, #ff7043 100%);
+            color: white;
+        }
+
+        .handshake-btn.system::after {
+            content: '442=1';
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            background: rgba(255,255,255,0.3);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+
+        .handshake-btn.emergency {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .handshake-btn.emergency::after {
+            content: '443=1';
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            background: rgba(255,255,255,0.3);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+
+        .handshake-btn.force-ready {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 100%);
+            color: white;
+            font-size: 1.0rem;
+        }
+
+        .handshake-btn.force-ready::after {
+            content: '448=1';
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            background: rgba(255,255,255,0.3);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.6rem;
+        }
+
+        .handshake-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .handshake-btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .clear-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .clear-btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            color: white;
+            position: relative;
+        }
+
+        .clear-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .clear-btn:first-child::after {
+            content: '440=0';
+            position: absolute;
+            top: 2px;
+            right: 4px;
+            background: rgba(255,255,255,0.3);
+            padding: 1px 4px;
+            border-radius: 8px;
+            font-size: 0.6rem;
+        }
+
+        .clear-btn:last-child::after {
+            content: '441=0';
+            position: absolute;
+            top: 2px;
+            right: 4px;
+            background: rgba(255,255,255,0.3);
+            padding: 1px 4px;
+            border-radius: 8px;
+            font-size: 0.6rem;
+        }
+
+        .connection-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .connection-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .connection-btn.connect {
+            background: #27ae60;
+            color: white;
+        }
+
+        .connection-btn.disconnect {
+            background: #e67e22;
+            color: white;
+        }
+
+        .connection-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .status-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #27ae60;
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .speed-control {
+            margin-bottom: 20px;
+        }
+
+        .speed-slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .speed-slider {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: #ecf0f1;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #9b59b6;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(155, 89, 182, 0.3);
+        }
+
+        .speed-slider::-webkit-slider-thumb:hover {
+            background: #8e44ad;
+            transform: scale(1.2);
+        }
+
+        .speed-display {
+            min-width: 60px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #9b59b6;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+
+        .speed-button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            color: white;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .speed-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
+        }
+
+        .speed-button::after {
+            content: '445/446/447';
+            position: absolute;
+            top: 4px;
+            right: 8px;
+            background: rgba(255,255,255,0.3);
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.6rem;
+        }
+
+        .ccd1-status-grid, .angle-status-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .ccd1-status-item, .angle-status-item {
+            padding: 12px;
+            background: #fff3cd;
+            border-radius: 8px;
+            border-left: 4px solid #f39c12;
+        }
+
+        .ccd1-status-item.ready, .angle-status-item.ready {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+
+        .ccd1-status-item.alarm, .angle-status-item.alarm {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .angle-status-item {
+            border-left-color: #e74c3c;
+        }
+
+        .angle-status-item.ready {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+
+        .queue-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .queue-count {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #f39c12;
+        }
+
+        .angle-result {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .angle-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+
+        .world-coord-status {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .world-coord-status.valid {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .world-coord-status.invalid {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .system-status-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin: 2px;
+        }
+
+        .system-status-indicator.ready {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .system-status-indicator.running {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .system-status-indicator.alarm {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .system-status-indicator.inactive {
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+
+        .position-display, .joints-display {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .coord-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .joints-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .coord-item, .joint-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e0e6ed;
+        }
+
+        .coord-label, .joint-label {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+
+        .coord-value, .joint-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .progress-container {
+            margin: 15px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: #ecf0f1;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #27ae60, #2ecc71);
+            border-radius: 15px;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .register-panel {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e6ed;
+            border-left: 4px solid #34495e;
+            margin-bottom: 30px;
+        }
+
+        .register-panel .panel-title {
+            border-bottom-color: #34495e;
+        }
+
+        .register-display {
+            font-family: 'Courier New', monospace;
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .register-section {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .register-section h4 {
+            color: #3498db;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .register-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid #4a5f7a;
+        }
+
+        .register-row:last-child {
+            border-bottom: none;
+        }
+
+        .register-address {
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        .register-value {
+            color: #27ae60;
+        }
+
+        .log-container {
+            margin-top: 30px;
+            background: #2c3e50;
+            border-radius: 15px;
+            padding: 20px;
+            color: #ecf0f1;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-header {
+            color: #3498db;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #34495e;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .timestamp {
+            color: #95a5a6;
+            margin-right: 10px;
+        }
+
+        .log-success { color: #27ae60; }
+        .log-error { color: #e74c3c; }
+        .log-warning { color: #f39c12; }
+        .log-info { color: #3498db; }
+
+        .clear-log-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            border: none;
+            border-radius: 8px;
+            background: #95a5a6;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-log-btn:hover {
+            background: #7f8c8d;
+        }
+
+        @media (max-width: 1600px) {
+            .main-content {
+                grid-template-columns: 1fr 1fr 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+            
+            .handshake-status-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .handshake-status-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Dobot狀態機交握控制器 (增強版)</h1>
+            <div class="subtitle">機械臂狀態機交握系統 - 基地址400 + 外部系統監控 + 強制Ready測試</div>
+        </div>
+
+        <div class="status-bar">
+            <div class="connection-status">
+                <div class="status-indicator" id="connectionIndicator"></div>
+                <span id="connectionText">未連接</span>
+            </div>
+            
+            <div class="handshake-status-bar">
+                <div id="readyBit" class="handshake-bit bit-inactive">Ready</div>
+                <div id="runningBit" class="handshake-bit bit-inactive">Running</div>
+                <div id="alarmBit" class="handshake-bit bit-inactive">Alarm</div>
+                <div id="initBit" class="handshake-bit bit-inactive">Init</div>
+            </div>
+            
+            <div class="timestamp" id="currentTime"></div>
+        </div>
+
+        <div class="main-content">
+            <!-- 狀態機交握控制面板 -->
+            <div class="control-panel">
+                <div class="panel-title">狀態機交握控制</div>
+                
+                <div class="flow-buttons">
+                    <button class="handshake-btn vp-pickup" onclick="executeVpPickup()" id="vpPickupBtn" title="寫入寄存器440=1，觸發VP視覺取料流程">
+                        VP視覺取料 (Flow1)
+                    </button>
+                    
+                    <button class="handshake-btn unload-flow" onclick="executeUnloadFlow()" id="unloadFlowBtn" title="寫入寄存器441=1，觸發出料流程">
+                        出料流程 (Flow2)
+                    </button>
+                    
+                    <button class="handshake-btn manual" onclick="executeManualFlow(1)" title="寫入寄存器444=1，手動執行Flow1">
+                        手動Flow1
+                    </button>
+                    
+                    <button class="handshake-btn manual" onclick="executeManualFlow(2)" title="寫入寄存器444=2，手動執行Flow2">
+                        手動Flow2
+                    </button>
+                </div>
+
+                <div class="clear-buttons">
+                    <button class="clear-btn" onclick="clearVpCommand()" title="寫入寄存器440=0，清零VP控制指令">清零VP指令</button>
+                    <button class="clear-btn" onclick="clearUnloadCommand()" title="寫入寄存器441=0，清零出料控制指令">清零出料指令</button>
+                </div>
+
+                <div class="flow-buttons">
+                    <button class="handshake-btn system" onclick="clearAlarm()" title="寫入寄存器442=1，清除系統警報">
+                        清除警報
+                    </button>
+                    
+                    <button class="handshake-btn emergency" onclick="emergencyStop()" title="寫入寄存器443=1，觸發緊急停止">
+                        緊急停止
+                    </button>
+                    
+                    <button class="handshake-btn force-ready" onclick="forceReady()" id="forceReadyBtn" title="寫入寄存器448=1，強制設置Ready狀態 (測試用)">
+                        強制Ready
+                    </button>
+                </div>
+
+                <div class="connection-buttons">
+                    <button class="connection-btn connect" onclick="connectModbus()" id="connectBtn">
+                        連接
+                    </button>
+                    <button class="connection-btn disconnect" onclick="disconnectModbus()" id="disconnectBtn" disabled>
+                        斷開
+                    </button>
+                </div>
+            </div>
+
+            <!-- 機械臂狀態面板 -->
+            <div class="status-panel">
+                <div class="panel-title">機械臂狀態</div>
+                
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-label">狀態寄存器</div>
+                        <div class="status-value" id="statusRegister">0</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">二進制</div>
+                        <div class="status-value" id="statusBinary">0000</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">機械臂狀態</div>
+                        <div class="status-value" id="robotState">未知</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">當前流程</div>
+                        <div class="status-value" id="currentFlow">無</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">機械臂模式</div>
+                        <div class="status-value" id="robotMode">-</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">錯誤代碼</div>
+                        <div class="status-value" id="errorCode">0</div>
+                    </div>
+                </div>
+
+                <div class="progress-container">
+                    <div class="status-label">流程進度</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+                    </div>
+                </div>
+
+                <div class="position-display">
+                    <div class="status-label">當前位置 (mm)</div>
+                    <div class="coord-grid">
+                        <div class="coord-item">
+                            <div class="coord-label">X</div>
+                            <div class="coord-value" id="posX">0</div>
+                        </div>
+                        <div class="coord-item">
+                            <div class="coord-label">Y</div>
+                            <div class="coord-value" id="posY">0</div>
+                        </div>
+                        <div class="coord-item">
+                            <div class="coord-label">Z</div>
+                            <div class="coord-value" id="posZ">0</div>
+                        </div>
+                        <div class="coord-item">
+                            <div class="coord-label">R</div>
+                            <div class="coord-value" id="posR">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="joints-display">
+                    <div class="status-label">關節角度 (度)</div>
+                    <div class="joints-grid">
+                        <div class="joint-item">
+                            <div class="joint-label">J1</div>
+                            <div class="joint-value" id="jointJ1">0.0</div>
+                        </div>
+                        <div class="joint-item">
+                            <div class="joint-label">J2</div>
+                            <div class="joint-value" id="jointJ2">0.0</div>
+                        </div>
+                        <div class="joint-item">
+                            <div class="joint-label">J3</div>
+                            <div class="joint-value" id="jointJ3">0.0</div>
+                        </div>
+                        <div class="joint-item">
+                            <div class="joint-label">J4</div>
+                            <div class="joint-value" id="jointJ4">0.0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 速度控制面板 -->
+            <div class="speed-panel">
+                <div class="panel-title">速度控制</div>
+                
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-label">系統速度</div>
+                        <div class="status-value" id="currentSpeed">50%</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">機械臂速度</div>
+                        <div class="status-value" id="robotSpeed">50%</div>
+                    </div>
+                </div>
+
+                <div class="speed-control">
+                    <div class="speed-slider-container">
+                        <span>1%</span>
+                        <input type="range" id="speedSlider" class="speed-slider" min="1" max="100" value="50">
+                        <span>100%</span>
+                        <div id="speedDisplay" class="speed-display">50%</div>
+                    </div>
+                    <button id="setSpeedBtn" class="speed-button" title="寫入寄存器445=1, 446=速度值, 447=指令ID">設定全局速度</button>
+                </div>
+
+                <div class="status-grid" style="margin-top: 20px;">
+                    <div class="status-item">
+                        <div class="status-label">操作次數</div>
+                        <div class="status-value" id="operationCount">0</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">錯誤次數</div>
+                        <div class="status-value" id="errorCount">0</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">運行時間</div>
+                        <div class="status-value" id="runTime">0分鐘</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">IO狀態</div>
+                        <div class="status-value" id="ioStatus">DI:0 DO:0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CCD1佇列面板 -->
+            <div class="ccd1-panel">
+                <div class="panel-title">CCD1 FIFO佇列</div>
+                
+                <div class="ccd1-status-grid">
+                    <div class="ccd1-status-item" id="ccd1StatusItem">
+                        <div class="status-label">CCD1系統狀態</div>
+                        <div id="ccd1SystemBits"></div>
+                        <div class="status-value" id="ccd1Connection">未連接</div>
+                    </div>
+                </div>
+
+                <div class="queue-indicator">
+                    <div>
+                        <div class="status-label">佇列物體數量</div>
+                        <div class="queue-count" id="queueCount">0</div>
+                    </div>
+                    <div>
+                        <span class="world-coord-status" id="worldCoordStatus">未知</span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 0.9rem; color: #6c757d;">
+                    <strong>CCD1佇列說明：</strong><br>
+                    • Flow1從CCD1佇列按順序取物<br>
+                    • 佇列為空時自動觸發檢測<br>
+                    • 支援世界座標轉換<br>
+                    • 寄存器240: 物體數量<br>
+                    • 寄存器256: 世界座標有效
+                </div>
+            </div>
+
+            <!-- Angle系統面板 -->
+            <div class="angle-panel">
+                <div class="panel-title">Angle角度校正</div>
+                
+                <div class="angle-status-grid">
+                    <div class="angle-status-item" id="angleStatusItem">
+                        <div class="status-label">Angle系統狀態</div>
+                        <div id="angleSystemBits"></div>
+                        <div class="status-value" id="angleConnection">未連接</div>
+                    </div>
+                </div>
+
+                <div class="angle-result">
+                    <div>
+                        <div class="status-label">檢測成功</div>
+                        <div class="status-value" id="angleSuccess">否</div>
+                    </div>
+                </div>
+
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-label">原始角度</div>
+                        <div class="status-value" id="originalAngle">-- °</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">角度差</div>
+                        <div class="status-value" id="angleDiff">-- °</div>
+                    </div>
+                    <div class="status-item" style="grid-column: 1 / -1;">
+                        <div class="status-label">馬達位置</div>
+                        <div class="status-value" id="motorPosition">--</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 0.9rem; color: #6c757d;">
+                    <strong>Angle系統說明：</strong><br>
+                    • CCD3檢測角度 → 計算馬達位置<br>
+                    • 公式: 9000 - 角度×100<br>
+                    • 寄存器700: 系統狀態<br>
+                    • 寄存器720-726: 檢測結果
+                </div>
+            </div>
+        </div>
+
+        <!-- 寄存器監控面板 -->
+        <div class="register-panel">
+            <div class="panel-title">寄存器監控 (增強版)</div>
+            <div class="register-display" id="registerDisplay">
+                <div class="register-section">
+                    <h4>Dobot狀態寄存器 (只讀)</h4>
+                    <div class="register-row">
+                        <span class="register-address">400 (狀態寄存器):</span>
+                        <span id="reg400" class="register-value">0</span>
+                    </div>
+                    <div class="register-row">
+                        <span class="register-address">401 (機械臂狀態):</span>
+                        <span id="reg401" class="register-value">0</span>
+                    </div>
+                    <div class="register-row">
+                        <span class="register-address">402 (當前流程):</span>
+                        <span id="reg402" class="register-value">0</span>
+                    </div>
+                    <div class="register-row">
+                        <span class="register-address">419 (全局速度):</span>
+                        <span id="reg419" class="register-value">50</span>
+                    </div>
+                </div>
+                
+                <div class="register-section">
+                    <h4>Dobot控制寄存器 (讀寫)</h4>
+                    <div class="register-row">
+                        <span class="register-address">440 (VP控制):</span>
+                        <span id="reg440" class="register-value">0</span>
+                    </div>
+                    <div class="register-row">
+                        <span class="register-address">441 (出料控制):</span>
+                        <span id="reg441" class="register-value">0</span>
+                    </div>
+                    <div class="register-row">
+                        <span class="register-address">442 (清除警報):</span>
+                        <span id="reg442" class="register-value">0</span>
+                    </div>
+                    <div class="register-row">
+                        <span class="register-address">448 (強制Ready):</span>
+                        <span id="reg448" class="register-value">0</span>
+                    </div>
+                </div>
+                
+                <div class="register-section">
+                    <h4>CCD1系統寄存器</h4>
+                    <div class="register-row">
+                        <span class="register-address">201 (CCD1狀態):</span>
+                        <span id="regCCD1Status" class="register-value">--</span>
+                    </div>
+                    <div class="register-row">
+                        <span class="register-address">240 (佇列數量):</span>
+                        <span id="regCCD1Queue" class="register-value">--</span>
+                    </div>
+                    <div class="register-row">
+                        <span class="register-address">256 (世界座標):</span>
+                        <span id="regCCD1World" class="register-value">--</span>
+                    </div>
+                </div>
+                
+                <div class="register-section">
+                    <h4>Angle系統寄存器</h4>
+                    <div class="register-row">
+                        <span class="register-address">700 (Angle狀態):</span>
+                        <span id="regAngleStatus" class="register-value">--</span>
+                    </div>
+                    <div class="register-row">
+                        <span class="register-address">720 (檢測成功):</span>
+                        <span id="regAngleSuccess" class="register-value">--</span>
+                    </div>
+                    <div class="register-row">
+                        <span class="register-address">721-722 (原始角度):</span>
+                        <span id="regAngleOriginal" class="register-value">--</span>
+                    </div>
+                    <div class="register-row">
+                        <span class="register-address">723-724 (角度差):</span>
+                        <span id="regAngleDiff" class="register-value">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作日誌 -->
+        <div class="log-container">
+            <div class="log-header">狀態機交握操作日誌 (增強版)</div>
+            <div id="logContent"></div>
+            <button class="clear-log-btn" onclick="clearLog()">清除日誌</button>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket連接
+        const socket = io();
+        let isConnected = false;
+
+        // DOM元素
+        const speedSlider = document.getElementById('speedSlider');
+        const speedDisplay = document.getElementById('speedDisplay');
+        const logContainer = document.getElementById('logContent');
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+            addLog('Dobot狀態機交握控制器 (增強版) 已載入', 'info');
+        });
+
+        // 更新當前時間
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = 
+                now.toLocaleString('zh-TW', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+        }
+
+        // 日誌功能
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('zh-TW');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span><span class="log-${type}">${message}</span>`;
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // 保持最多100條日誌
+            while (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+
+        function clearLog() {
+            logContainer.innerHTML = '';
+            addLog('日誌已清除', 'info');
+        }
+
+        // 更新連接狀態
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const indicator = document.getElementById('connectionIndicator');
+            const text = document.getElementById('connectionText');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            
+            if (connected) {
+                indicator.classList.add('connected');
+                text.textContent = '已連接';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } else {
+                indicator.classList.remove('connected');
+                text.textContent = '未連接';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+
+        // 更新狀態機交握位元
+        function updateHandshakeBits(handshakeStatus) {
+            const readyBit = document.getElementById('readyBit');
+            const runningBit = document.getElementById('runningBit');
+            const alarmBit = document.getElementById('alarmBit');
+            const initBit = document.getElementById('initBit');
+
+            readyBit.className = 'handshake-bit ' + (handshakeStatus.ready ? 'bit-active' : 'bit-inactive');
+            runningBit.className = 'handshake-bit ' + (handshakeStatus.running ? 'bit-active' : 'bit-inactive');
+            alarmBit.className = 'handshake-bit ' + (handshakeStatus.alarm ? 'bit-active' : 'bit-inactive');
+            initBit.className = 'handshake-bit ' + (handshakeStatus.initialized ? 'bit-active' : 'bit-inactive');
+        }
+
+        // 更新系統狀態位元顯示
+        function updateSystemStatusBits(statusBits, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container || !statusBits) return;
+
+            container.innerHTML = '';
+            
+            if (statusBits.ready) {
+                container.innerHTML += '<span class="system-status-indicator ready">Ready</span>';
+            }
+            if (statusBits.running) {
+                container.innerHTML += '<span class="system-status-indicator running">Running</span>';
+            }
+            if (statusBits.alarm) {
+                container.innerHTML += '<span class="system-status-indicator alarm">Alarm</span>';
+            }
+            if (statusBits.initialized) {
+                container.innerHTML += '<span class="system-status-indicator ready">Init</span>';
+            }
+            
+            if (!statusBits.ready && !statusBits.running && !statusBits.alarm && !statusBits.initialized) {
+                container.innerHTML = '<span class="system-status-indicator inactive">離線</span>';
+            }
+        }
+
+        // 更新外部系統狀態
+        function updateExternalSystemsStatus(externalSystems) {
+            if (!externalSystems) return;
+
+            // CCD1系統狀態
+            if (externalSystems.ccd1) {
+                const ccd1 = externalSystems.ccd1;
+                const ccd1Item = document.getElementById('ccd1StatusItem');
+                const ccd1Connection = document.getElementById('ccd1Connection');
+                const queueCount = document.getElementById('queueCount');
+                const worldCoordStatus = document.getElementById('worldCoordStatus');
+
+                // 更新連接狀態
+                ccd1Connection.textContent = ccd1.connected ? '已連接' : '未連接';
+                ccd1Item.className = ccd1.connected ? 'ccd1-status-item ready' : 'ccd1-status-item alarm';
+
+                // 更新狀態位元
+                updateSystemStatusBits(ccd1.status_bits, 'ccd1SystemBits');
+
+                // 更新佇列數量
+                queueCount.textContent = ccd1.circle_count || 0;
+
+                // 更新世界座標狀態
+                if (ccd1.world_coord_valid) {
+                    worldCoordStatus.textContent = '世界座標有效';
+                    worldCoordStatus.className = 'world-coord-status valid';
+                } else {
+                    worldCoordStatus.textContent = '世界座標無效';
+                    worldCoordStatus.className = 'world-coord-status invalid';
+                }
+
+                // 更新寄存器顯示
+                document.getElementById('regCCD1Status').textContent = ccd1.status_bits?.status_register_value || '--';
+                document.getElementById('regCCD1Queue').textContent = ccd1.circle_count || '--';
+                document.getElementById('regCCD1World').textContent = ccd1.world_coord_valid ? '1' : '0';
+            }
+
+            // Angle系統狀態
+            if (externalSystems.angle) {
+                const angle = externalSystems.angle;
+                const angleItem = document.getElementById('angleStatusItem');
+                const angleConnection = document.getElementById('angleConnection');
+                const angleSuccess = document.getElementById('angleSuccess');
+                const originalAngle = document.getElementById('originalAngle');
+                const angleDiff = document.getElementById('angleDiff');
+                const motorPosition = document.getElementById('motorPosition');
+
+                // 更新連接狀態
+                angleConnection.textContent = angle.connected ? '已連接' : '未連接';
+                angleItem.className = angle.connected ? 'angle-status-item ready' : 'angle-status-item alarm';
+
+                // 更新狀態位元
+                updateSystemStatusBits(angle.status_bits, 'angleSystemBits');
+
+                // 更新檢測結果
+                angleSuccess.textContent = angle.detection_success ? '是' : '否';
+
+                if (angle.angle_data && Object.keys(angle.angle_data).length > 0) {
+                    const data = angle.angle_data;
+                    originalAngle.textContent = data.original_angle ? data.original_angle.toFixed(2) + '°' : '--';
+                    angleDiff.textContent = data.angle_diff ? data.angle_diff.toFixed(2) + '°' : '--';
+                    motorPosition.textContent = data.motor_position || '--';
+                } else {
+                    originalAngle.textContent = '--';
+                    angleDiff.textContent = '--';
+                    motorPosition.textContent = '--';
+                }
+
+                // 更新寄存器顯示
+                document.getElementById('regAngleStatus').textContent = angle.status_bits?.status_register_value || '--';
+                document.getElementById('regAngleSuccess').textContent = angle.detection_success ? '1' : '0';
+                document.getElementById('regAngleOriginal').textContent = angle.angle_data?.original_angle ? angle.angle_data.original_angle.toFixed(2) : '--';
+                document.getElementById('regAngleDiff').textContent = angle.angle_data?.angle_diff ? angle.angle_data.angle_diff.toFixed(2) : '--';
+            }
+        }
+
+        // 更新狀態顯示
+        function updateStatusDisplay(status) {
+            if (!status) return;
+
+            // 更新狀態機交握狀態
+            const handshakeStatus = status.handshake_status || {};
+            updateHandshakeBits(handshakeStatus);
+            
+            // 更新基本狀態
+            document.getElementById('statusRegister').textContent = handshakeStatus.status_register_value || 0;
+            document.getElementById('statusBinary').textContent = handshakeStatus.status_register_binary || '0000';
+            document.getElementById('robotState').textContent = status.robot_state_text || '未知';
+            document.getElementById('currentFlow').textContent = status.current_flow_text || '無';
+            document.getElementById('robotMode').textContent = status.robot_mode || '-';
+            document.getElementById('errorCode').textContent = status.error_code || '0';
+
+            // 更新流程進度
+            const progress = status.flow_progress || 0;
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('progressFill').textContent = progress + '%';
+
+            // 更新位置資訊
+            const position = status.position || {};
+            document.getElementById('posX').textContent = position.x || 0;
+            document.getElementById('posY').textContent = position.y || 0;
+            document.getElementById('posZ').textContent = position.z || 0;
+            document.getElementById('posR').textContent = position.r || 0;
+
+            // 更新關節角度
+            const joints = status.joints || {};
+            document.getElementById('jointJ1').textContent = (joints.j1 || 0).toFixed(1);
+            document.getElementById('jointJ2').textContent = (joints.j2 || 0).toFixed(1);
+            document.getElementById('jointJ3').textContent = (joints.j3 || 0).toFixed(1);
+            document.getElementById('jointJ4').textContent = (joints.j4 || 0).toFixed(1);
+
+            // 更新速度資訊
+            document.getElementById('currentSpeed').textContent = (status.global_speed || 50) + '%';
+            document.getElementById('robotSpeed').textContent = (status.robot_speed || 50) + '%';
+
+            // 更新統計資訊
+            const statistics = status.statistics || {};
+            document.getElementById('operationCount').textContent = statistics.operation_count || 0;
+            document.getElementById('errorCount').textContent = statistics.error_count || 0;
+            document.getElementById('runTime').textContent = (statistics.run_time_minutes || 0) + '分鐘';
+
+            // 更新IO狀態
+            const ioStatus = status.io_status || {};
+            document.getElementById('ioStatus').textContent = `DI:${ioStatus.di || 0} DO:${ioStatus.do || 0}`;
+
+            // 更新外部系統狀態
+            if (status.external_systems) {
+                updateExternalSystemsStatus(status.external_systems);
+            }
+
+            updateConnectionStatus(status.connection_status);
+        }
+
+        // 更新控制寄存器顯示
+        function updateControlRegisters(data) {
+            if (!data) return;
+
+            document.getElementById('reg400').textContent = data.status_register || 0;
+            document.getElementById('reg401').textContent = data.robot_state || 0;
+            document.getElementById('reg402').textContent = data.current_flow || 0;
+            document.getElementById('reg419').textContent = data.global_speed || 50;
+            document.getElementById('reg440').textContent = data.vp_control || 0;
+            document.getElementById('reg441').textContent = data.unload_control || 0;
+            document.getElementById('reg442').textContent = data.clear_alarm || 0;
+            document.getElementById('reg448').textContent = data.force_ready || 0;
+        }
+
+        // 速度控制
+        speedSlider.addEventListener('input', (e) => {
+            speedDisplay.textContent = e.target.value + '%';
+        });
+
+        // API請求函數
+        async function apiRequest(url, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {'Content-Type': 'application/json'}
+                };
+                
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+                
+                const response = await fetch(url, options);
+                const result = await response.json();
+                
+                if (result.message) {
+                    addLog(result.message, result.success ? 'success' : 'error');
+                }
+                
+                return result;
+            } catch (error) {
+                addLog(`API請求失敗: ${error.message}`, 'error');
+                return { success: false, message: error.message };
+            }
+        }
+
+        // 狀態機交握控制函數
+        async function connectModbus() {
+            const result = await apiRequest('/api/connect', 'POST');
+            if (result.success) {
+                updateConnectionStatus(true);
+                requestStatus();
+                setInterval(() => {
+                    if (isConnected) {
+                        socket.emit('request_status');
+                        socket.emit('request_control_status');
+                        socket.emit('request_external_systems');
+                    }
+                }, 1000);
+            }
+        }
+
+        async function disconnectModbus() {
+            const result = await apiRequest('/api/disconnect', 'POST');
+            updateConnectionStatus(false);
+        }
+
+        async function executeVpPickup() {
+            if (!isConnected) {
+                addLog('請先連接Modbus服務器', 'error');
+                return;
+            }
+            
+            const result = await apiRequest('/api/handshake/vp_pickup', 'POST');
+            if (result.success) {
+                addLog('VP視覺取料指令已發送 (寄存器440=1) - 將使用FIFO佇列模式', 'info');
+            }
+        }
+
+        async function executeUnloadFlow() {
+            if (!isConnected) {
+                addLog('請先連接Modbus服務器', 'error');
+                return;
+            }
+            
+            const result = await apiRequest('/api/handshake/unload_flow', 'POST');
+            if (result.success) {
+                addLog('出料流程指令已發送 (寄存器441=1) - standby→撈料→組裝→放下→standby', 'info');
+            }
+        }
+
+        async function executeManualFlow(flowId) {
+            if (!isConnected) {
+                addLog('請先連接Modbus服務器', 'error');
+                return;
+            }
+            
+            const result = await apiRequest(`/api/handshake/manual_flow/${flowId}`, 'POST');
+            if (result.success) {
+                addLog(`手動執行Flow${flowId}指令已發送 (寄存器444=${flowId})`, 'info');
+            }
+        }
+
+        async function clearVpCommand() {
+            const result = await apiRequest('/api/handshake/clear_vp', 'POST');
+            if (result.success) {
+                addLog('VP指令已清零 (寄存器440=0)', 'info');
+            }
+        }
+
+        async function clearUnloadCommand() {
+            const result = await apiRequest('/api/handshake/clear_unload', 'POST');
+            if (result.success) {
+                addLog('出料指令已清零 (寄存器441=0)', 'info');
+            }
+        }
+
+        async function clearAlarm() {
+            const result = await apiRequest('/api/handshake/clear_alarm', 'POST');
+            if (result.success) {
+                addLog('清除警報指令已發送 (寄存器442=1)', 'info');
+            }
+        }
+
+        async function emergencyStop() {
+            const result = await apiRequest('/api/handshake/emergency_stop', 'POST');
+            if (result.success) {
+                addLog('緊急停止指令已發送 (寄存器443=1)', 'warning');
+            }
+        }
+
+        async function forceReady() {
+            if (!isConnected) {
+                addLog('請先連接Modbus服務器', 'error');
+                return;
+            }
+            
+            const result = await apiRequest('/api/handshake/force_ready', 'POST');
+            if (result.success) {
+                addLog('強制Ready指令已發送 (寄存器448=1) - 注意：僅用於測試流程', 'warning');
+            }
+        }
+
+        async function setGlobalSpeed() {
+            const speed = parseInt(speedSlider.value);
+            const result = await apiRequest('/api/handshake/set_speed', 'POST', {speed: speed});
+            if (result.success) {
+                addLog(`全局速度設定為: ${speed}% (寄存器445=1, 446=${speed}, 447=ID)`, 'success');
+            }
+        }
+
+        // 綁定速度設定按鈕
+        document.getElementById('setSpeedBtn').addEventListener('click', setGlobalSpeed);
+
+        function requestStatus() {
+            if (isConnected) {
+                socket.emit('request_status');
+                socket.emit('request_control_status');
+                socket.emit('request_external_systems');
+            }
+        }
+
+        // Socket事件處理
+        socket.on('connect', () => {
+            addLog('WebSocket連接已建立', 'success');
+        });
+
+        socket.on('disconnect', () => {
+            addLog('WebSocket連接已斷開', 'warning');
+            updateConnectionStatus(false);
+        });
+
+        socket.on('status_update', (status) => {
+            updateStatusDisplay(status);
+        });
+
+        socket.on('control_status_update', (data) => {
+            updateControlRegisters(data);
+        });
+
+        socket.on('external_systems_update', (data) => {
+            updateExternalSystemsStatus(data);
+        });
+
+        socket.on('handshake_result', (data) => {
+            const logType = data.success ? 'success' : 'error';
+            addLog(data.message, logType);
+        });
+
+        socket.on('speed_update_result', (data) => {
+            const logType = data.success ? 'success' : 'error';
+            addLog(data.message, logType);
+        });
+
+        // 定期請求狀態更新
+        setInterval(() => {
+            if (isConnected) {
+                requestStatus();
+            }
+        }, 2000);
+
+        // 添加tooltip功能
+        document.addEventListener('DOMContentLoaded', function() {
+            // 為所有帶有title屬性的元素添加tooltip樣式
+            const elementsWithTitle = document.querySelectorAll('[title]');
+            elementsWithTitle.forEach(element => {
+                element.style.position = 'relative';
+                element.addEventListener('mouseenter', function() {
+                    element.style.cursor = 'help';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

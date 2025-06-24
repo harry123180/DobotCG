@@ -1,0 +1,2858 @@
+[
+  {
+      "id": 0,
+      "level": 0,
+      "en": {
+        "description": "No error",
+        "cause": "",
+        "solution": ""
+      },
+      "zh_TW": {
+        "description": "無錯誤",
+        "cause": "",
+        "solution": ""
+      }
+  },
+  {
+      "id": 1,
+      "level": 0,
+      "en": {
+        "description": "UniIO Board dropped",
+        "cause": "",
+        "solution": ""
+      },
+      "zh_TW": {
+        "description": "通用IO板斷線",
+        "cause": "",
+        "solution": ""
+      }
+    },
+    {
+      "id": 2,
+      "level": 0,
+      "en": {
+        "description": "Axis 1 dropped",
+        "cause": "",
+        "solution": ""
+      },
+      "zh_TW": {
+        "description": "關節1斷線",
+        "cause": "",
+        "solution": ""
+      }
+    },
+    {
+      "id": 3,
+      "level": 0,
+      "en": {
+        "description": "Axis 2 dropped",
+        "cause": "",
+        "solution": ""
+      },
+      "zh_TW": {
+        "description": "關節2斷線",
+        "cause": "",
+        "solution": ""
+      }
+    },
+    {
+      "id": 4,
+      "level": 0,
+      "en": {
+        "description": "Axis 3 dropped",
+        "cause": "",
+        "solution": ""
+      },
+      "zh_TW": {
+        "description": "關節3斷線",
+        "cause": "",
+        "solution": ""
+      }
+    },
+    {
+      "id": 5,
+      "level": 0,
+      "en": {
+        "description": "Axis 4 dropped",
+        "cause": "",
+        "solution": ""
+      },
+      "zh_TW": {
+        "description": "關節4斷線",
+        "cause": "",
+        "solution": ""
+      }
+    },
+    {
+      "id": 16,
+      "level": 5,
+      "en": {
+          "description": "Inverse kinematics error with singularity",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "規劃位置接近臂奇異點",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 17,
+      "level": 5,
+      "en": {
+        "description": "Inverse kinematics error with no solution",
+        "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "逆解算無解",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 18,
+      "level": 5,
+      "en": {
+          "description": "Target position triggers joint limit",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "目標位置觸發關節限位",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 19,
+      "level": 5,
+      "en": {
+          "description": "Duplicated data in JUMP or ARC or Circles instruction",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "JUMP或ARC或Circles指令點位重複",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 20,
+      "level": 5,
+      "en": {
+          "description": "Wrong input parameters for arc",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "圓弧輸入參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 21,
+      "level": 5,
+      "en": {
+          "description": "The Start and the End is negative or the zLimit is below the start and end points",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "抬升高度、下降高度為負或者zLimit低於起始點和結束點的高度",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 22,
+      "level": 5,
+      "en": {
+          "description": "Wrong arm orientation switch",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "手勢切換錯誤",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 23,
+      "level": 5,
+      "en": {
+          "description": "Plan point during linear motion out of working area",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "直線運動過程中規劃點超出工作空間",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 24,
+      "level": 5,
+      "en": {
+          "description": "Plan point during circular arc motion out of working area",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "圓弧運動過程中規劃點超出工作空間",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 25,
+      "level": 5,
+      "en": {
+          "description": "Wrong mode for motion instruction",
+          "cause": "",
+          "solution": "Internal software error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "運動指令模式錯誤",
+          "cause": "",
+          "solution": "內部軟體錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 26,
+      "level": 5,
+      "en": {
+          "description": "Wrong input parameters for speed",
+          "cause": "",
+          "solution": "input correct parameter"
+        },
+        "zh_TW": {
+          "description": "速度輸入參數錯誤",
+          "cause": "",
+          "solution": "輸入正確的參數"
+        }
+  },
+  {
+      "id": 27,
+      "level": 5,
+      "en": {
+          "description": "Wrong trajectory motion plan of continuous path",
+          "cause": "",
+          "solution": "input correct parameter"
+        },
+        "zh_TW": {
+          "description": "CP軌跡運動規劃錯誤",
+          "cause": "",
+          "solution": "輸入正確的參數"
+        }
+  },
+  {
+      "id": 28,
+      "level": 5,
+      "en": {
+          "description": "Wrong input parameters for circle",
+          "cause": "",
+          "solution": "input correct parameter"
+        },
+        "zh_TW": {
+          "description": "整圓輸入參數錯誤",
+          "cause": "",
+          "solution": "輸入正確的參數"
+        }
+  },
+  {
+      "id": 29,
+      "level": 5,
+      "en": {
+          "description": "Plan point during circular circle motion out of working circle",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "整圓運動過程中規劃點超出工作空間",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 30,
+      "level": 5,
+      "en": {
+          "description": "Inching target position inaccessible",
+          "cause": "",
+          "solution": "Reverse inch out of limit"
+        },
+        "zh_TW": {
+          "description": "寸動目標位置不可達",
+          "cause": "",
+          "solution": "反向寸動離開限位"
+        }
+  },
+  {
+      "id": 32,
+      "level": 5,
+      "en": {
+          "description": "Inverse kinematics singularity during moving",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "運動過程逆解算奇異",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 33,
+      "level": 5,
+      "en": {
+          "description": "Inverse kinematics with no solution during moving",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "運動過程逆解算無解",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 34,
+      "level": 5,
+      "en": {
+          "description": "Inverse kinematcis with result out of working area",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "運動過程逆解算限位",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 48,
+      "level": 5,
+      "en": {
+          "description": "Joint1 overspeed",
+          "cause": "",
+          "solution": "Reset the speed or re-select the movement point away from the singularity"
+        },
+        "zh_TW": {
+          "description": "關節1超速",
+          "cause": "",
+          "solution": "重新設置速度或重新選取運動點位遠離奇異點"
+        }
+  },
+  {
+      "id": 49,
+      "level": 5,
+      "en": {
+        "description": "Joint2 overspeed",
+        "cause": "",
+        "solution": "Reset the speed or re-select the movement point away from the singularity"
+      },
+      "zh_TW": {
+        "description": "關節2超速",
+        "cause": "",
+        "solution": "重新設置速度或重新選取運動點位遠離奇異點"
+      }
+  },
+  {
+      "id": 50,
+      "level": 5,
+      "en": {
+        "description": "Joint3 overspeed",
+        "cause": "",
+        "solution": "Reset the speed or re-select the movement point away from the singularity"
+      },
+      "zh_TW": {
+        "description": "關節3超速",
+        "cause": "",
+        "solution": "重新設置速度或重新選取運動點位遠離奇異點"
+      }
+  },
+  {
+      "id": 51,
+      "level": 5,
+      "en": {
+        "description": "Joint4 overspeed",
+        "cause": "",
+        "solution": "Reset the speed or re-select the movement point away from the singularity"
+      },
+      "zh_TW": {
+        "description": "關節4超速",
+        "cause": "",
+        "solution": "重新設置速度或重新選取運動點位遠離奇異點"
+      }
+  },
+  {
+      "id": 52,
+      "level": 5,
+      "en": {
+          "description": "Joint1 position out of range",
+          "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "關節1位置超差",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 53,
+      "level": 5,
+      "en": {
+          "description": "Joint2 position lag error",
+          "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "關節2位置超差",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 54,
+      "level": 5,
+      "en": {
+        "description": "Joint3 position lag error",
+        "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "關節3位置超差",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 55,
+      "level": 5,
+      "en": {
+        "description": "Joint4 position lag error",
+        "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "關節4位置超差",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 64,
+      "level": 5,
+      "en": {
+          "description": "Joint1 exceeds positive limit",
+          "cause": "",
+          "solution": "Reverse jog out of limit"
+        },
+        "zh_TW": {
+          "description": "關節1正向限位",
+          "cause": "",
+          "solution": "反向點動脫離限位"
+        }
+  },
+  {
+      "id": 65,
+      "level": 5,
+      "en": {
+          "description": "Joint1 exceeds negative limit",
+          "cause": "",
+          "solution": "Reverse jog out of limit"
+        },
+        "zh_TW": {
+          "description": "關節1負向限位",
+          "cause": "",
+          "solution": "反向點動脫離限位"
+        }
+  },
+  {
+      "id": 66,
+      "level": 5,
+      "en": {
+          "description": "Joint2 exceeds positive limit",
+          "cause": "",
+          "solution": "Reverse jog out of limit"
+        },
+        "zh_TW": {
+          "description": "關節2正向限位",
+          "cause": "",
+          "solution": "反向點動脫離限位"
+        }
+  },
+  {
+      "id": 67,
+      "level": 5,
+      "en": {
+          "description": "Joint2 exceeds negative limit",
+          "cause": "",
+          "solution": "Reverse jog out of limit"
+        },
+        "zh_TW": {
+          "description": "關節2負向限位",
+          "cause": "",
+          "solution": "反向點動脫離限位"
+        }
+  },
+  {
+      "id": 68,
+      "level": 5,
+      "en": {
+          "description": "Joint3 exceeds positive limit",
+          "cause": "",
+          "solution": "Reverse jog out of limit"
+        },
+        "zh_TW": {
+          "description": "關節3正向限位",
+          "cause": "",
+          "solution": "反向點動脫離限位"
+        }
+  },
+  {
+      "id": 69,
+      "level": 5,
+      "en": {
+          "description": "Joint3 exceeds negative limit",
+          "cause": "",
+          "solution": "Reverse jog out of limit"
+        },
+        "zh_TW": {
+          "description": "關節3負向限位",
+          "cause": "",
+          "solution": "反向點動脫離限位"
+        }
+  },
+  {
+      "id": 70,
+      "level": 5,
+      "en": {
+          "description": "Joint4 exceeds positive limit",
+          "cause": "",
+          "solution": "Reverse jog out of limit"
+        },
+        "zh_TW": {
+          "description": "關節4正向限位",
+          "cause": "",
+          "solution": "反向點動脫離限位"
+        }
+  },
+  {
+      "id": 71,
+      "level": 5,
+      "en": {
+          "description": "Joint4 exceeds negative limit",
+          "cause": "",
+          "solution": "Reverse jog out of limit"
+        },
+        "zh_TW": {
+          "description": "關節4負向限位",
+          "cause": "",
+          "solution": "反向點動脫離限位"
+        }
+  },
+  {
+      "id": 72,
+      "level": 5,
+      "en": {
+          "description": "Parallelogram positive limit",
+          "cause": "",
+          "solution": "Reverse jog out of limit"
+        },
+        "zh_TW": {
+          "description": "平行四邊形正向限位",
+          "cause": "",
+          "solution": "反向點動脫離限位"
+        }
+  },
+  {
+      "id": 73,
+      "level": 5,
+      "en": {
+          "description": "Parallelogram negative limit",
+          "cause": "",
+          "solution": "Reverse jog out of limit"
+        },
+        "zh_TW": {
+          "description": "平行四邊形負向限位",
+          "cause": "",
+          "solution": "反向點動脫離限位"
+        }
+  },
+  {
+      "id": 74,
+      "level": 5,
+      "en": {
+          "description": "Joint6 exceeds positive limit",
+          "cause": "",
+          "solution": ""
+        },
+        "zh_TW": {
+          "description": "關節6正向限位",
+          "cause": "",
+          "solution": ""
+        }
+  },
+  {
+      "id": 75,
+      "level": 5,
+      "en": {
+          "description": "Joint6 exceeds negative limit",
+          "cause": "",
+          "solution": ""
+        },
+        "zh_TW": {
+          "description": "關節6負向限位",
+          "cause": "",
+          "solution": ""
+        }
+  },
+  {
+      "id": 80,
+      "level": 0,
+      "en": {
+        "description": "Joint1 lose step",
+        "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "關節1位置丟失",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 81,
+      "level": 0,
+      "en": {
+        "description": "Joint2 lose step",
+        "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "關節2位置丟失",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 82,
+      "level": 0,
+      "en": {
+        "description": "Joint3 lose step",
+        "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "關節3位置丟失",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 83,
+      "level": 0,
+      "en": {
+        "description": "Joint4 lose step",
+        "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "關節4位置丟失",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 84,
+      "level": 5,
+      "en": {
+          "description": "Algorithm timeout",
+          "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "演算法超時",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 85,
+      "level": 0,
+      "en": {
+          "description": "Hardware emergency stop button press or software emergency stop trigger",
+          "cause": "",
+          "solution": "If the hardware emergency stop button is pressed, release the hardware emergency stop button; if the software emergency stop triggers, click the software emergency stop button again"
+        },
+        "zh_TW": {
+          "description": "硬體急停按鈕按下或軟體急停觸發",
+          "cause": "",
+          "solution": "如果硬體急停按鈕按下則鬆開硬體急停按鈕，如果軟體急停觸發則再次點擊軟體急停按鈕"
+        }
+  },
+  {
+      "id": 86,
+      "level": 0,
+      "en": {
+          "description": "User emergency button pressed",
+          "cause": "",
+          "solution": "Release the user emergency stop button"
+        },
+        "zh_TW": {
+          "description": "使用者急停被按下",
+          "cause": "",
+          "solution": "鬆開使用者急停按鈕"
+        }
+  },
+  {
+      "id": 96,
+      "level": 0,
+      "en": {
+          "description": "Joint1 drive alarm",
+          "cause": "",
+          "solution": "Check if the communication of joint 1 is normal and then clear the error"
+        },
+        "zh_TW": {
+          "description": "關節一伺服報警",
+          "cause": "",
+          "solution": "檢查關節1通訊是否正常再清除錯誤"
+        }
+  },
+  {
+      "id": 97,
+      "level": 0,
+      "en": {
+          "description": "Joint1 Servo power off",
+          "cause": "",
+          "solution": "Re-enable joint 1"
+        },
+        "zh_TW": {
+          "description": "關節一伺服掉電",
+          "cause": "",
+          "solution": "重新使能關節1"
+        }
+      },
+  {
+      "id": 98,
+      "level": 0,
+      "en": {
+          "description": "Joint2 drive alarm",
+          "cause": "",
+          "solution": "Check if the communication of joint 2 is normal and then clear the error"
+        },
+        "zh_TW": {
+          "description": "關節二伺服報警",
+          "cause": "",
+          "solution": "檢查關節2通訊是否正常再清除錯誤"
+        }
+  },
+  {
+      "id": 99,
+      "level": 0,
+      "en": {
+          "description": "Joint2 Servo power off",
+          "cause": "",
+          "solution": "Re-enable joint 2"
+        },
+        "zh_TW": {
+          "description": "關節二伺服掉電",
+          "cause": "",
+          "solution": "重新使能關節2"
+        }
+  },
+  {
+      "id": 100,
+      "level": 0,
+      "en": {
+          "description": "Joint3 drive alarm",
+          "cause": "",
+          "solution": "Re-enable joint 3"
+        },
+        "zh_TW": {
+          "description": "關節三伺服報警",
+          "cause": "",
+          "solution": "重新使能關節3"
+        }
+  },
+  {
+      "id": 101,
+      "level": 0,
+      "en": {
+          "description": "Joint3 Servo power off",
+          "cause": "",
+          "solution": "Re-enable joint 3"
+        },
+        "zh_TW": {
+          "description": "關節三伺服掉電",
+          "cause": "",
+          "solution": "重新使能關節3"
+        }
+  },
+  {
+      "id": 102,
+      "level": 0,
+      "en": {
+          "description": "Joint4 drive alarm",
+          "cause": "",
+          "solution": "Re-enable joint 4"
+        },
+        "zh_TW": {
+          "description": "關節四伺服報警",
+          "cause": "",
+          "solution": "重新使能關節4"
+        }
+  },
+  {
+      "id": 103,
+      "level": 0,
+      "en": {
+          "description": "Joint4 drive power off",
+          "cause": "",
+          "solution": "Re-enable joint 4"
+        },
+        "zh_TW": {
+          "description": "關節四伺服掉電",
+          "cause": "",
+          "solution": "重新使能關節4"
+        }
+  },
+  {
+      "id": 104,
+      "level": 5,
+      "en": {
+          "description": "Robot homing failed",
+          "cause": "",
+          "solution": "Home again"
+        },
+        "zh_TW": {
+          "description": "機械臂回零失敗",
+          "cause": "",
+          "solution": "重新回零"
+        }
+  },
+  {
+      "id": 105,
+      "level": 5,
+      "en": {
+          "description": "Robot Servo on failed",
+          "cause": "",
+          "solution": "Check whether the hardware is normal and re-enable"
+        },
+        "zh_TW": {
+          "description": "機械臂使能失敗",
+          "cause": "",
+          "solution": "檢查硬體是否正常，重新使能"
+        }
+  },
+  {
+      "id": 106,
+      "level": 5,
+      "en": {
+          "description": "Abnormal conveyor data",
+          "cause": "",
+          "solution": ""
+        },
+        "zh_TW": {
+          "description": "輸送帶資料異常",
+          "cause": "",
+          "solution": ""
+        }
+  },
+  {
+      "id": 107,
+      "level": 5,
+      "en": {
+          "description": "Abnormal conveyor synchronization",
+          "cause": "",
+          "solution": ""
+        },
+        "zh_TW": {
+          "description": "輸送帶同步異常",
+          "cause": "",
+          "solution": ""
+        }
+  },
+  {
+      "id": 108,
+      "level": 5,
+      "en": {
+          "description": "Conveyor conveyor encoder 1 is disconnected",
+          "cause": "",
+          "solution": ""
+        },
+        "zh_TW": {
+          "description": "輸送帶編碼器1斷開連接",
+          "cause": "",
+          "solution": ""
+        }
+  },
+  {
+      "id": 109,
+      "level": 5,
+      "en": {
+          "description": "Conveyor conveyor encoder 2 is disconnected",
+          "cause": "",
+          "solution": ""
+        },
+        "zh_TW": {
+          "description": "輸送帶編碼器2斷開連接",
+          "cause": "",
+          "solution": ""
+        }
+  },
+  {
+      "id": 110,
+      "level": 5,
+      "en": {
+          "description": "Encoder position error",
+          "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "伺服編碼器資料超差",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 112,
+      "level": 5,
+      "en": {
+          "description": "Collision Detection",
+          "cause": "",
+          "solution": "Keep away from the work area and continue to run"
+        },
+        "zh_TW": {
+          "description": "碰撞檢測停機",
+          "cause": "",
+          "solution": "離開工作區域，繼續運行"
+        }
+  },
+  {
+      "id": 161,
+      "level": 5,
+      "en": {
+          "description": "Error switching drag and drop mode",
+          "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "切換拖拽模式錯誤",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 4096,
+      "level": 5,
+      "en": {
+          "description": "Failed to open mechanical file",
+          "cause": "",
+          "solution": "Check if the file location is correct and restart"
+        },
+        "zh_TW": {
+          "description": "開啟機械參數檔案失敗",
+          "cause": "",
+          "solution": "檢查檔案位置是否正確並重啟"
+        }
+  },
+  {
+      "id": 8192,
+      "level": 5,
+      "en": {
+          "description": "Failed to open project file",
+          "cause": "",
+          "solution": "Check if the file location is correct and restart"
+        },
+        "zh_TW": {
+          "description": "開啟工程檔案失敗",
+          "cause": "",
+          "solution": "檢查檔案位置是否正確並重啟"
+        }
+  },
+  {
+      "id": 8193,
+      "level": 5,
+      "en": {
+          "description": "Failed to open program file",
+          "cause": "",
+          "solution": "Check if the file location is correct and restart"
+        },
+        "zh_TW": {
+          "description": "開啟程式檔案失敗",
+          "cause": "",
+          "solution": "檢查檔案位置是否正確並重啟"
+        }
+  },
+  {
+      "id": 8194,
+      "level": 5,
+      "en": {
+          "description": "Failed to open global variable file",
+          "cause": "",
+          "solution": "Check if the file location is correct and restart"
+        },
+        "zh_TW": {
+          "description": "開啟全域參數檔案失敗",
+          "cause": "",
+          "solution": "檢查檔案位置是否正確並重啟"
+        }
+  },
+  {
+      "id": 8195,
+      "level": 5,
+      "en": {
+          "description": "Failed to open teaching point file",
+          "cause": "",
+          "solution": "Check if the file location is correct and restart"
+        },
+        "zh_TW": {
+          "description": "開啟示教點檔案失敗",
+          "cause": "",
+          "solution": "檢查檔案位置是否正確並重啟"
+        }
+  },
+  {
+      "id": 8196,
+      "level": 0,
+      "en": {
+          "description": "Failed to start debugger process",
+          "cause": "",
+          "solution": "Rerun"
+        },
+        "zh_TW": {
+          "description": "啟動除錯程序失敗",
+          "cause": "",
+          "solution": "重新運行"
+        }
+  },
+  {
+      "id": 12288,
+      "level": 0,
+      "en": {
+          "description": "Emergency stop detected",
+          "cause": "",
+          "solution": "Power on again"
+        },
+        "zh_TW": {
+          "description": "緊急停止按鍵按下",
+          "cause": "",
+          "solution": "重新上電"
+        }
+  },
+  {
+      "id": 12289,
+      "level": 0,
+      "en": {
+          "description": "External emergency stop detected",
+          "cause": "",
+          "solution": "Power on again"
+        },
+        "zh_TW": {
+          "description": "檢測到外部急停",
+          "cause": "",
+          "solution": "重新上電"
+        }
+  },
+  {
+      "id": 12290,
+      "level": 0,
+      "en": {
+          "description": "The servo power board temperature is too high",
+          "cause": "",
+          "solution": "Turn off the machine and let it cool for a period of time"
+        },
+        "zh_TW": {
+          "description": "伺服功率板溫度過高",
+          "cause": "",
+          "solution": "關閉機器後冷卻一段時間"
+        }
+  },
+  {
+      "id": 12292,
+      "level": 0,
+      "en": {
+          "description": "Safeguard stop detected",
+          "cause": "",
+          "solution": "After ensuring safety, restore the safeguard device"
+        },
+        "zh_TW": {
+          "description": "檢測到安全防護停止",
+          "cause": "",
+          "solution": "確保安全後，恢復安全防護裝置"
+        }
+  },
+  {
+      "id": 12293,
+      "level": 0,
+      "en": {
+          "description": "servo offline detected",
+          "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "檢測到伺服通訊斷開",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 12294,
+      "level": 5,
+      "en": {
+          "description": "Collision Detection",
+          "cause": "",
+          "solution": "Keep away from the work area and continue to run"
+        },
+        "zh_TW": {
+          "description": "碰撞檢測停機",
+          "cause": "",
+          "solution": "離開工作區域，繼續運行"
+        }
+  },
+  {
+      "id": 20480,
+      "level": 5,
+      "en": {
+          "description": "AUX Joint1 exceeds positive limit",
+          "cause": "",
+          "solution": "Reverse jog out of limit"
+        },
+        "zh_TW": {
+          "description": "擴展軸1正向限位",
+          "cause": "",
+          "solution": "反向點動離開限位"
+        }
+  },
+  {
+      "id": 20481,
+      "level": 5,
+      "en": {
+          "description": "AUX Joint1 exceeds negative limit",
+          "cause": "",
+          "solution": "Reverse jog out of limit"
+        },
+        "zh_TW": {
+          "description": "擴展軸1負向限位",
+          "cause": "",
+          "solution": "反向點動離開限位"
+        }
+  },
+  {
+      "id": 20482,
+      "level": 5,
+      "en": {
+          "description": "AUX Joint1 communication failed",
+          "cause": "",
+          "solution": "Check if the communication of AUX joint 1 is normal and then clear the error"
+        },
+        "zh_TW": {
+          "description": "擴展軸1通訊中斷",
+          "cause": "",
+          "solution": "檢查擴展軸1線路連接是否異常"
+        }
+  },
+  {
+    "id": 20483,
+      "level": 5,
+      "en": {
+          "description": "AUX Joint1 position out of working area",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "擴展軸1指令位置限位",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+    "id": 20484,
+    "level": 0,
+    "en": {
+          "description": "AUX Joint1 emergency stop button press",
+          "cause": "",
+          "solution": "release the hardware emergency stop button"
+        },
+        "zh_TW": {
+          "description": "擴展軸急停按鈕按下",
+          "cause": "",
+          "solution": "鬆開硬體急停按鈕"
+        }
+  },
+  {
+      "id": 33024,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for CP instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "CP指令無輸入參數",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 33025,
+      "level": 5,
+      "en": {
+          "description": "Input parameters of CP instruction out of range",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "CP指令參數超出範圍",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 33280,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for Arch instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Arch指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 33281,
+      "level": 5,
+      "en": {
+          "description": "Index parameter of Arch instruction out of range",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Arch指令索引超出範圍",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 33282,
+      "level": 5,
+      "en": {
+          "description": "Index parameter of Arch instruction not configured yet",
+          "cause": "",
+          "solution": "Please set index parameters"
+        },
+        "zh_TW": {
+          "description": "Arch指令索引對應參數尚未設置",
+          "cause": "",
+          "solution": "請設置索引參數"
+        }
+  },
+  {
+      "id": 33536,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for LimZ instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "LimZ指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 33537,
+      "level": 5,
+      "en": {
+        "description": "Input parameters of LimZ instruction out of range",
+        "cause": "",
+        "solution": "Enter the correct parameters"
+      },
+      "zh_TW": {
+        "description": "LimZ指令參數超出範圍",
+        "cause": "",
+        "solution": "輸入正確參數"
+      }
+  },
+  {
+      "id": 33792,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for Speed instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Speed指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 33793,
+      "level": 5,
+      "en": {
+          "description": "Ratio parameter of Speed instruction out of range [1, 100]",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Speed指令比例參數超出範圍[1, 100]",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 34048,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for Accel instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Accel指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 34049,
+      "level": 5,
+      "en": {
+          "description": "Ratio parameter of Accel instruction out of range [1, 100]",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Accel指令比例參數超出範圍[1, 100]",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 34304,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for Jerk instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Jerk指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 34305,
+      "level": 5,
+      "en": {
+          "description": "Ratio parameter of Jerk instruction out of range [1, 100]",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Jerk指令比例參數超出範圍[1, 100]",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 34560,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for SpeedS instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "SpeedS指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 34561,
+      "level": 5,
+      "en": {
+          "description": "Ratio parameter of SpeedS instruction out of range [1, 100]",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "SpeedS指令比例參數超出範圍[1, 100]",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 34816,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for SpeedR instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "SpeedR指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 34817,
+      "level": 5,
+      "en": {
+          "description": "Ratio parameter of SpeedR instruction out of range [1, 100]",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "SpeedR指令比例參數超出範圍[1, 100]",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 35072,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for AccelS instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "AccelS指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 35073,
+      "level": 5,
+      "en": {
+          "description": "Ratio parameter of AccelS instruction out of range [1, 100]",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "AccelS指令比例參數超出範圍[1, 100]",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 35328,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for AccelR instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "AccelR指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 35329,
+      "level": 5,
+      "en": {
+          "description": "Ratio parameter of AccelR instruction out of range [1, 100]",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "AccelR指令比例參數超出範圍[1, 100]",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 35584,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for JerkS instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "JerkS指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 35585,
+      "level": 5,
+      "en": {
+          "description": "Ratio parameter of JerkS instruction out of range [1, 100]",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "JerkS指令比例參數超出範圍[1, 100]",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 35840,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for JerkR instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "JerkR指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 35841,
+      "level": 5,
+      "en": {
+          "description": "Ratio parameter of JerkR instruction out of range [1, 100]",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "JerkR指令比例參數超出範圍[1, 100]",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36096,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for Go instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Go指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 36097,
+      "level": 5,
+      "en": {
+          "description": "No motion point parameter for Go instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Go指令缺少座標點參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 36098,
+      "level": 5,
+      "en": {
+          "description": "Incorrect motion point for Go instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Go指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36099,
+      "level": 5,
+      "en": {
+          "description": "Incorrect control parameter for Go instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Go指令控制參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36352,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for Move instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Move指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 36353,
+      "level": 5,
+      "en": {
+          "description": "No motion point parameter for Move instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Move指令缺少座標點參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 36354,
+      "level": 5,
+      "en": {
+          "description": "Incorrect motion point for Move instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Move指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36355,
+      "level": 5,
+      "en": {
+          "description": "Incorrect control parameter for Move instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Move指令控制參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36608,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for Arch3 instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Arch3指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 36609,
+      "level": 5,
+      "en": {
+          "description": "No motion point parameter for Arch3 instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Arch3指令缺少座標點參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 36610,
+      "level": 5,
+      "en": {
+          "description": "Incorrect motion point for Arch3 instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Arch3指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36611,
+      "level": 5,
+      "en": {
+          "description": "Incorrect control parameter for Arch3 instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Arch3指令控制參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36864,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for Jump instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Jump指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 36865,
+      "level": 5,
+      "en": {
+          "description": "No motion point parameter for Jump instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Jump指令缺少座標點參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+  },
+  {
+      "id": 36866,
+      "level": 5,
+      "en": {
+          "description": "Incorrect motion point for Jump instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Jump指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36867,
+      "level": 5,
+      "en": {
+          "description": "Incorrect control parameter for Jump instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Jump指令控制參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+    "id": 40960,
+    "level": 5,
+    "en": {
+          "description": "No input parameters for Circle3 instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Circle3指令無輸入參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+      },
+      {
+        "id": 40961,
+        "level": 5,
+        "en": {
+          "description": "No motion point parameter for Circle3 instruction",
+          "cause": "",
+          "solution": "Please enter parameters"
+        },
+        "zh_TW": {
+          "description": "Circle3指令缺少座標點參數",
+          "cause": "",
+          "solution": "請輸入參數"
+        }
+      },
+      {
+        "id": 40962,
+        "level": 5,
+        "en": {
+          "description": "Incorrect motion point for Circle3 instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Circle3指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+      {
+        "id": 40963,
+        "level": 5,
+        "en": {
+          "description": "Incorrect control parameter for Circle3 instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Circle3指令控制參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+      {
+      "id": 45056,
+      "level": 5,
+      "en": {
+          "description": "Circle3 Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Circle3 Option 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+      {
+      "id": 45057,
+      "level": 5,
+      "en": {
+          "description": "Jump  Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Jump  Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+      {
+      "id": 45058,
+      "level": 5,
+      "en": {
+          "description": "Arch Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Arch Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+      {
+      "id": 45059,
+      "level": 5,
+      "en": {
+          "description": "Arch3 Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Arch3 Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+      {
+      "id": 45060,
+      "level": 5,
+      "en": {
+          "description": "Jerk Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Jerk Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+      {
+      "id": 45061,
+      "level": 5,
+      "en": {
+          "description": "JerkR Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "JerkR Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+      {
+      "id": 45062,
+      "level": 5,
+      "en": {
+          "description": "JerkS Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "JerkS Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+      {
+      "id": 45063,
+      "level": 5,
+      "en": {
+          "description": "Accel Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Accel Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45064,
+      "level": 5,
+      "en": {
+          "description": "AccelR Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "AccelR Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45065,
+      "level": 5,
+      "en": {
+          "description": "AccelS Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "AccelS Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45066,
+      "level": 5,
+      "en": {
+          "description": "SpeedFactor Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "SpeedFactor Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45067,
+      "level": 5,
+      "en": {
+          "description": "Speed Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Speed Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45068,
+      "level": 5,
+      "en": {
+          "description": "SpeedR Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "SpeedR Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45069,
+      "level": 5,
+      "en": {
+          "description": "Limz Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Limz Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+      {
+      "id": 45070,
+      "level": 5,
+      "en": {
+          "description": "CP Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "CP Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45071,
+      "level": 5,
+      "en": {
+          "description": "DO Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "DO Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45072,
+      "level": 5,
+      "en": {
+          "description": "Go Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Go Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45073,
+      "level": 5,
+      "en": {
+          "description": "Move Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Move Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45074,
+      "level": 5,
+      "en": {
+          "description": "MoveJ Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "MoveJ Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45075,
+      "level": 5,
+      "en": {
+          "description": "Ecp Option  Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Ecp Option   參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45076,
+      "level": 5,
+      "en": {
+          "description": "EcpSet Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "EcpSet Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45077,
+      "level": 5,
+      "en": {
+          "description": "SetExicitMode Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "SetExicitMode Option  參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 106,
+      "level": 5,
+      "en": {
+          "description": "Conveyor tracking stop failed Error",
+          "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "輸送帶跟蹤停止失敗",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 107,
+      "level": 5,
+      "en": {
+          "description": "Conveyor tracking synchronization failed Error",
+          "cause": "",
+          "solution": "Internal error, restart or contact manufacturer"
+        },
+        "zh_TW": {
+          "description": "輸送帶跟蹤同步失敗",
+          "cause": "",
+          "solution": "內部錯誤，重啟或聯繫廠商"
+        }
+  },
+  {
+      "id": 32768,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for speedFactor instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "SpeedFactor指令無輸入參數",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 32769,
+      "level": 5,
+      "en": {
+          "description": "Input parameters of speedFactor instruction out of range",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "SpeedFactor指令參數超出範圍",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+      {
+      "id": 32770,
+      "level": 5,
+      "en": {
+          "description": "DO input parameters Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "DO 輸入參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 32771,
+      "level": 5,
+      "en": {
+          "description": "DI input parameters Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "DI 輸入參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+      {
+      "id": 32776,
+      "level": 5,
+      "en": {
+          "description": "DOGroup params number err",
+          "cause": "",
+          "solution": "params is too much"
+        },
+        "zh_TW": {
+          "description": "DOGroup 參數數量錯誤",
+          "cause": "",
+          "solution": "點位過多，最好不要一次輸入超過100個點"
+        }
+      },
+      {
+      "id": 32777,
+      "level": 5,
+      "en": {
+          "description": "DOGroup have some params's index out of range",
+          "cause": "",
+          "solution": "input correct params"
+        },
+        "zh_TW": {
+          "description": "DOGroup 參數中存在的點位索引 超出邊界",
+          "cause": "",
+          "solution": "請核對點位範圍"
+        }
+      },
+      {
+      "id": 32778,
+      "level": 5,
+      "en": {
+          "description": "DOGroup have some params's index type error",
+          "cause": "",
+          "solution": "input correct params"
+        },
+        "zh_TW": {
+          "description": "DOGroup 參數中存在的點位索引的類型錯誤",
+          "cause": "",
+          "solution": "只能輸入數字"
+        }
+      },
+      {
+      "id": 32779,
+      "level": 5,
+      "en": {
+          "description": "DOGroup have some params's value type error",
+          "cause": "",
+          "solution": "input correct params,number type and boolean is needed eg.(0/1) || (true/false) || (ON/OFF)"
+        },
+        "zh_TW": {
+          "description": "DOGroup 參數中存在的點位輸出值的類型錯誤",
+          "cause": "",
+          "solution": "請輸入數字(0/1)或bool(true/false)或內置的 ON/OFF"
+        }
+      },
+      {
+      "id": 32780,
+      "level": 5,
+      "en": {
+          "description": "DOGroup have some params's isqueue type error",
+          "cause": "",
+          "solution": "eg.(0/1) || (true/false) || (ON/OFF) . true means queue command(default),false:Immediate command"
+        },
+        "zh_TW": {
+          "description": "DOGroup 參數中存在的可選參數 指令類型的類型錯誤",
+          "cause": "",
+          "solution": "請輸入數字(0/1)或bool(true/false)或內置的 ON/OFF 真 : 隊列指令(預設) 假: 立即指令"
+        }
+      },
+  {
+      "id": 32781,
+      "level": 5,
+      "en": {
+          "description": "DOGroup err internal ",
+          "cause": "",
+          "solution": "internal error has happend,try again."
+        },
+        "zh_TW": {
+          "description": "DOGroup 發生內部錯誤",
+          "cause": "",
+          "solution": "再次嘗試，如果一直存在錯誤，請聯繫技術支援"
+        }
+      },
+  {
+      "id": 36100,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for movej instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "MoveJ指令無輸入參數",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+  {
+      "id": 36101,
+      "level": 5,
+      "en": {
+          "description": "No motion point parameter for  movej instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "MoveJ指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+  {
+      "id": 36102,
+      "level": 5,
+      "en": {
+          "description": "No motion point parameter for  movej instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "MoveJ指令缺少座標點參數",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+  {
+      "id": 36103,
+      "level": 5,
+      "en": {
+          "description": "Incorrect motion point for  RP instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "RP 指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+  {
+      "id": 36104,
+      "level": 5,
+      "en": {
+          "description": "Incorrect offset for  RP instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "RP 偏移值參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+  {
+      "id": 36105,
+      "level": 5,
+      "en": {
+          "description": "Incorrect motion point for  RJ instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "RJ 指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+  {
+      "id": 36106,
+      "level": 5,
+      "en": {
+          "description": "Incorrect offset for  RJ instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "RJ 偏移值參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+  {
+      "id": 36107,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for GoR instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "GoR 指令無輸入參數",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+  {
+      "id": 36108,
+      "level": 5,
+      "en": {
+          "description": "Incorrect motion point for  GoR instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "GoR 指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+  {
+      "id": 36109,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for MoveJR instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "MoveJR 指令無輸入參數",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      },
+  {
+      "id": 36110,
+      "level": 5,
+      "en": {
+          "description": "Incorrect motion point for  MoveJR instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "MoveJR 指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36121,
+      "level": 5,
+      "en": {
+          "description": "RP Inverse kinematics error with no solution",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "RP指令給定點位逆解算無解",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 36122,
+      "level": 5,
+      "en": {
+          "description": "RP Inverse kinematics error with result out of working area",
+          "cause": "",
+          "solution": "Reselect movement points"
+        },
+        "zh_TW": {
+          "description": "RP指令給定點位逆解算超限位",
+          "cause": "",
+          "solution": "重新選取運動點位"
+        }
+  },
+  {
+      "id": 45079,
+      "level": 5,
+      "en": {
+          "description": "loadSwitch Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "loadSwitch Option參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+    "id": 45080,
+    "level": 5,
+    "en": {
+          "description": "loadSet Options Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "loadSet Options參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45081,
+      "level": 5,
+      "en": {
+          "description": "CPParamErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option CP 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45082,
+      "level": 5,
+      "en": {
+          "description": "TOOLParamErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option TOOL 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45083,
+      "level": 5,
+      "en": {
+          "description": "USERParamErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option USERParam 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45084,
+      "level": 5,
+      "en": {
+          "description": "SPEEDParamErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option SPEED 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45085,
+      "level": 5,
+      "en": {
+          "description": "SPEEDSParamErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option SPEEDS 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45086,
+      "level": 5,
+      "en": {
+          "description": "ACCELParamErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option ACCEL 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45087,
+      "level": 5,
+      "en": {
+          "description": "ACCELSParamErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option ACCELS 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45088,
+      "level": 5,
+      "en": {
+          "description": "ARCHParamErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option ARCH 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45089,
+      "level": 5,
+      "en": {
+          "description": "STARTParamErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option START 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45090,
+      "level": 5,
+      "en": {
+          "description": "ZLIMITParamErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option ZLIMIT 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45091,
+      "level": 5,
+      "en": {
+          "description": "ENDParamErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option END 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45092,
+      "level": 5,
+      "en": {
+          "description": "SYNCaramErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option SYNC 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45093,
+      "level": 5,
+      "en": {
+          "description": "ARMParamErrorOption",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "Option ARM 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45312,
+      "level": 5,
+      "en": {
+          "description": "loadSwitch Option Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "loadSwitch Option參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 45313,
+      "level": 5,
+      "en": {
+          "description": "loadSet Options Error",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "loadSet Options參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 49152,
+      "level": 5,
+      "en": {
+          "description": "Enable remote control when enabled",
+          "cause": "",
+          "solution": "Next enable and then switch"
+        },
+        "zh_TW": {
+          "description": "使能狀態下，啟動遠端控制",
+          "cause": "",
+          "solution": "下使能後再切換"
+        }
+  },
+  {
+      "id": 36111,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for GoIO instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "GoIO 指令無輸入參數",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36112,
+      "level": 5,
+      "en": {
+          "description": "Incorrect motion point for GoIO instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "GoIO 指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36113,
+      "level": 5,
+      "en": {
+          "description": "Incorrect parameters for GoIO instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "GoIO IO 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36114,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for MoveIO instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "MoveIO 指令無輸入參數",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36115,
+      "level": 5,
+      "en": {
+          "description": "Incorrect motion point for MoveIO instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "MoveIO 指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36116,
+      "level": 5,
+      "en": {
+          "description": "Incorrect parameters for MoveIO instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "MoveIO IO 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36117,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for MoveJIO instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "MoveJIO 指令無輸入參數",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36118,
+      "level": 5,
+      "en": {
+          "description": "Incorrect motion point for MoveJIO instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "MoveJIO 指令座標點參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+  },
+  {
+      "id": 36119,
+      "level": 5,
+      "en": {
+          "description": "No input parameters for MoveJIO instruction",
+          "cause": "",
+          "solution": "Enter the correct parameters"
+        },
+        "zh_TW": {
+          "description": "MoveJIO IO 參數錯誤",
+          "cause": "",
+          "solution": "輸入正確參數"
+        }
+      }
+]

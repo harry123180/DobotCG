@@ -1,0 +1,27 @@
+{
+  "module_id": "CCD3_Angle_Detection",
+  "camera_config": {
+    "name": "ccd3_camera",
+    "ip": "192.168.1.12",
+    "exposure_time": 20000.0,
+    "gain": 200.0,
+    "frame_rate": 30.0,
+    "width": 2592,
+    "height": 1944
+  },
+  "tcp_server": {
+    "host": "127.0.0.1",
+    "port": 502,
+    "unit_id": 1
+  },
+  "modbus_mapping": {
+    "base_address": 800
+  },
+  "detection_params": {
+    "min_area_rate": 50,
+    "sequence_mode": 0,
+    "gaussian_kernel": 3,
+    "threshold_mode": 0,
+    "manual_threshold": 127
+  }
+}

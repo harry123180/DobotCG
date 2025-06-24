@@ -1,0 +1,26 @@
+{
+  "modbus_tcp": {
+    "host": "127.0.0.1",
+    "port": 502,
+    "unit_id": 1,
+    "timeout": 3.0,
+    "retry_on_failure": true,
+    "max_retries": 3
+  },
+  "web_server": {
+    "host": "0.0.0.0",
+    "port": 5007,
+    "debug": false
+  },
+  "xc_module": {
+    "base_address": 1000,
+    "register_count": 50
+  },
+  "ui_settings": {
+    "auto_refresh": true,
+    "refresh_interval": 3.0,
+    "show_debug_info": true,
+    "command_confirmation": false,
+    "manual_mode": false
+  }
+}

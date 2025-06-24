@@ -1,0 +1,23 @@
+{
+  "module_id": "震動盤模組",
+  "device_connection": {
+    "ip": "192.168.1.7",
+    "port": 1000,
+    "slave_id": 10,
+    "timeout": 0.2
+  },
+  "tcp_server": {
+    "host": "127.0.0.1",
+    "port": 502,
+    "unit_id": 1,
+    "timeout": 1.0
+  },
+  "modbus_mapping": {
+    "base_address": 300
+  },
+  "timing": {
+    "fast_loop_interval": 0.02,
+    "movement_delay": 0.1,
+    "command_delay": 0.02
+  }
+}

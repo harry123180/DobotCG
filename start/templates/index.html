@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DobotM1專案啟動工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 22px;
+            color: #374151;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .modbus-server {
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .modbus-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ef4444;
+            transition: background-color 0.3s ease;
+        }
+
+        .status-dot.active {
+            background: #10b981;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        .module-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .module-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .module-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .module-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .module-controls {
+            margin-bottom: 15px;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .control-label {
+            font-weight: 500;
+            color: #374151;
+            flex: 1;
+        }
+
+        .control-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* iOS Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .toggle-switch.active {
+            background: #007aff;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(26px);
+        }
+
+        .com-select {
+            padding: 6px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 80px;
+        }
+
+        .quick-nav {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .quick-nav:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .quick-nav:disabled,
+        .quick-nav.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .status-text {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .web-controls {
+            background: #f0f9ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .web-controls-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #0369a1;
+            margin-bottom: 10px;
+        }
+
+        .logs {
+            background: #111827;
+            color: #d1d5db;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+        }
+
+        .log-timestamp {
+            color: #9ca3af;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+            }
+            
+            .modules-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .control-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>DobotM1專案啟動工具</h1>
+            <p>統一管理所有模組與Web應用</p>
+        </div>
+
+        <div class="main-content">
+            <!-- ModbusTCP服務器控制 -->
+            <div class="section">
+                <div class="modbus-server">
+                    <div class="modbus-status">
+                        <div class="status-indicator">
+                            <div class="status-dot" id="modbus-status-dot"></div>
+                            <span id="modbus-status-text">ModbusTCP服務器 (端口502)</span>
+                        </div>
+                        <div>
+                            <button class="btn btn-primary" id="modbus-start">啟動</button>
+                            <button class="btn btn-danger" id="modbus-stop">停止</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 視覺模組 -->
+            <div class="section">
+                <h2 class="section-title">視覺模組</h2>
+                <div class="modules-grid">
+                    <div class="module-card">
+                        <div class="module-header">
+                            <div class="module-name">CCD1視覺檢測</div>
+                            <div class="status-indicator">
+                                <div class="status-dot" id="CCD1-status-dot"></div>
+                                <span class="status-text" id="CCD1-status">停止</span>
+                            </div>
+                        </div>
+                        
+                        <div class="module-controls">
+                            <div class="control-row">
+                                <span class="control-label">主模組</span>
+                                <div class="control-actions">
+                                    <div class="toggle-switch" data-module="CCD1">
+                                        <div class="toggle-slider"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card">
+                        <div class="module-header">
+                            <div class="module-name">CCD3角度辨識</div>
+                            <div class="status-indicator">
+                                <div class="status-dot" id="CCD3-status-dot"></div>
+                                <span class="status-text" id="CCD3-status">停止</span>
+                            </div>
+                        </div>
+                        
+                        <div class="module-controls">
+                            <div class="control-row">
+                                <span class="control-label">主模組</span>
+                                <div class="control-actions">
+                                    <div class="toggle-switch" data-module="CCD3">
+                                        <div class="toggle-slider"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="web-controls">
+                            <div class="web-controls-title">Web介面控制</div>
+                            <div class="control-row">
+                                <span class="control-label">CCD3 Web</span>
+                                <div class="control-actions">
+                                    <a href="http://localhost:5052" target="_blank" class="quick-nav disabled" id="CCD3-web-nav">
+                                        開啟介面
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控制模組 -->
+            <div class="section">
+                <h2 class="section-title">控制模組</h2>
+                <div class="modules-grid">
+                    <div class="module-card">
+                        <div class="module-header">
+                            <div class="module-name">Gripper夾爪</div>
+                            <div class="status-indicator">
+                                <div class="status-dot" id="Gripper-status-dot"></div>
+                                <span class="status-text" id="Gripper-status">停止</span>
+                            </div>
+                        </div>
+                        
+                        <div class="module-controls">
+                            <div class="control-row">
+                                <span class="control-label">主模組</span>
+                                <div class="control-actions">
+                                    <select class="com-select" id="Gripper-com">
+                                        <option value="">選擇COM口</option>
+                                    </select>
+                                    <div class="toggle-switch" data-module="Gripper">
+                                        <div class="toggle-slider"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="web-controls">
+                            <div class="web-controls-title">Web介面控制</div>
+                            <div class="control-row">
+                                <span class="control-label">Gripper Web</span>
+                                <div class="control-actions">
+                                    <div class="toggle-switch" data-module="Gripper_app">
+                                        <div class="toggle-slider"></div>
+                                    </div>
+                                    <a href="http://localhost:5054" target="_blank" class="quick-nav disabled" id="Gripper-web-nav">
+                                        開啟介面
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card">
+                        <div class="module-header">
+                            <div class="module-name">LED控制器</div>
+                            <div class="status-indicator">
+                                <div class="status-dot" id="LED-status-dot"></div>
+                                <span class="status-text" id="LED-status">停止</span>
+                            </div>
+                        </div>
+                        
+                        <div class="module-controls">
+                            <div class="control-row">
+                                <span class="control-label">主模組</span>
+                                <div class="control-actions">
+                                    <select class="com-select" id="LED-com">
+                                        <option value="">選擇COM口</option>
+                                    </select>
+                                    <div class="toggle-switch" data-module="LED">
+                                        <div class="toggle-slider"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="web-controls">
+                            <div class="web-controls-title">Web介面控制</div>
+                            <div class="control-row">
+                                <span class="control-label">LED Web</span>
+                                <div class="control-actions">
+                                    <div class="toggle-switch" data-module="LED_app">
+                                        <div class="toggle-slider"></div>
+                                    </div>
+                                    <a href="http://localhost:5008" target="_blank" class="quick-nav disabled" id="LED-web-nav">
+                                        開啟介面
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card">
+                        <div class="module-header">
+                            <div class="module-name">VP震動盤</div>
+                            <div class="status-indicator">
+                                <div class="status-dot" id="VP-status-dot"></div>
+                                <span class="status-text" id="VP-status">停止</span>
+                            </div>
+                        </div>
+                        
+                        <div class="module-controls">
+                            <div class="control-row">
+                                <span class="control-label">主模組</span>
+                                <div class="control-actions">
+                                    <div class="toggle-switch" data-module="VP">
+                                        <div class="toggle-slider"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="web-controls">
+                            <div class="web-controls-title">Web介面控制</div>
+                            <div class="control-row">
+                                <span class="control-label">VP Web</span>
+                                <div class="control-actions">
+                                    <div class="toggle-switch" data-module="VP_app">
+                                        <div class="toggle-slider"></div>
+                                    </div>
+                                    <a href="http://localhost:5053" target="_blank" class="quick-nav disabled" id="VP-web-nav">
+                                        開啟介面
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card">
+                        <div class="module-header">
+                            <div class="module-name">XC100升降</div>
+                            <div class="status-indicator">
+                                <div class="status-dot" id="XC100-status-dot"></div>
+                                <span class="status-text" id="XC100-status">停止</span>
+                            </div>
+                        </div>
+                        
+                        <div class="module-controls">
+                            <div class="control-row">
+                                <span class="control-label">主模組</span>
+                                <div class="control-actions">
+                                    <select class="com-select" id="XC100-com">
+                                        <option value="">選擇COM口</option>
+                                    </select>
+                                    <div class="toggle-switch" data-module="XC100">
+                                        <div class="toggle-slider"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="web-controls">
+                            <div class="web-controls-title">Web介面控制</div>
+                            <div class="control-row">
+                                <span class="control-label">XC100 Web</span>
+                                <div class="control-actions">
+                                    <div class="toggle-switch" data-module="XC_app">
+                                        <div class="toggle-slider"></div>
+                                    </div>
+                                    <a href="http://localhost:5007" target="_blank" class="quick-nav disabled" id="XC100-web-nav">
+                                        開啟介面
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系統日誌 -->
+            <div class="section">
+                <h2 class="section-title">系統日誌</h2>
+                <div class="logs" id="logs">
+                    <div class="log-entry">
+                        <span class="log-timestamp">[系統]</span> 啟動工具已載入，等待連接...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket連接
+        const socket = io();
+        
+        // 狀態管理
+        let currentStatus = {
+            modbus_server: false,
+            modules: {},
+            web_apps: {},
+            com_ports: []
+        };
+
+        // DOM元素
+        const modbusStartBtn = document.getElementById('modbus-start');
+        const modbusStopBtn = document.getElementById('modbus-stop');
+        const modbusStatusDot = document.getElementById('modbus-status-dot');
+        const modbusStatusText = document.getElementById('modbus-status-text');
+        const logsContainer = document.getElementById('logs');
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            loadComPorts();
+            startStatusMonitoring();
+            addLog('系統', '啟動工具已初始化');
+        });
+
+        // 事件監聽器
+        function initializeEventListeners() {
+            // ModbusTCP服務器控制
+            modbusStartBtn.addEventListener('click', () => controlModbusServer('start'));
+            modbusStopBtn.addEventListener('click', () => controlModbusServer('stop'));
+
+            // Toggle開關事件
+            document.querySelectorAll('.toggle-switch').forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    const module = this.dataset.module;
+                    const isActive = this.classList.contains('active');
+                    
+                    if (isActive) {
+                        stopModule(module);
+                    } else {
+                        startModule(module);
+                    }
+                });
+            });
+
+            // COM口選擇事件
+            document.querySelectorAll('.com-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const module = this.id.replace('-com', '');
+                    const comPort = this.value;
+                    if (comPort) {
+                        updateComConfig(module, comPort);
+                    }
+                });
+            });
+        }
+
+        // Socket事件處理
+        socket.on('connect', function() {
+            addLog('系統', '已連接到啟動工具服務器');
+        });
+
+        socket.on('status_update', function(data) {
+            updateAllStatus(data);
+        });
+
+        socket.on('connected', function(data) {
+            addLog('系統', data.message);
+        });
+
+        socket.on('monitoring_started', function(data) {
+            addLog('系統', data.message);
+        });
+
+        // 控制函數
+        async function controlModbusServer(action) {
+            try {
+                const response = await fetch(`/api/modbus_server/${action}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog('ModbusTCP', `服務器${action === 'start' ? '啟動' : '停止'}成功`);
+                } else {
+                    addLog('錯誤', result.message);
+                }
+            } catch (error) {
+                addLog('錯誤', `ModbusTCP服務器${action}失敗: ${error.message}`);
+            }
+        }
+
+        async function startModule(moduleName) {
+            try {
+                const comPort = getComPortForModule(moduleName);
+                const response = await fetch(`/api/modules/${moduleName}/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ com_port: comPort })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog(moduleName, '啟動成功');
+                } else {
+                    addLog('錯誤', `${moduleName} ${result.message}`);
+                }
+            } catch (error) {
+                addLog('錯誤', `${moduleName}啟動失敗: ${error.message}`);
+            }
+        }
+
+        async function stopModule(moduleName) {
+            try {
+                const response = await fetch(`/api/modules/${moduleName}/stop`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog(moduleName, '停止成功');
+                } else {
+                    addLog('錯誤', `${moduleName} ${result.message}`);
+                }
+            } catch (error) {
+                addLog('錯誤', `${moduleName}停止失敗: ${error.message}`);
+            }
+        }
+
+        async function updateComConfig(moduleName, comPort) {
+            try {
+                const response = await fetch(`/api/config/${moduleName}/com`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ com_port: comPort })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog(moduleName, `COM口配置更新為 ${comPort}`);
+                } else {
+                    addLog('錯誤', result.message);
+                }
+            } catch (error) {
+                addLog('錯誤', `更新COM口配置失敗: ${error.message}`);
+            }
+        }
+
+        async function loadComPorts() {
+            try {
+                const response = await fetch('/api/com_ports');
+                const result = await response.json();
+                
+                updateComPortSelects(result.ports);
+            } catch (error) {
+                addLog('錯誤', `載入COM口列表失敗: ${error.message}`);
+            }
+        }
+
+        function updateComPortSelects(ports) {
+            const comSelects = document.querySelectorAll('.com-select');
+            
+            comSelects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">選擇COM口</option>';
+                
+                ports.forEach(port => {
+                    const option = document.createElement('option');
+                    option.value = port;
+                    option.textContent = port;
+                    if (port === currentValue) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+            });
+        }
+
+        function getComPortForModule(moduleName) {
+            const modulesNeedingCom = ['Gripper', 'LED', 'XC100'];
+            
+            if (modulesNeedingCom.includes(moduleName)) {
+                const select = document.getElementById(`${moduleName}-com`);
+                return select ? select.value : null;
+            }
+            
+            return null;
+        }
+
+        function updateAllStatus(data) {
+            currentStatus = data;
+            
+            // 更新ModbusTCP服務器狀態
+            if (data.modbus_server !== undefined) {
+                const isRunning = data.modbus_server;
+                modbusStatusDot.classList.toggle('active', isRunning);
+                modbusStatusText.textContent = `ModbusTCP服務器 (端口502) - ${isRunning ? '運行中' : '停止'}`;
+            }
+            
+            // 更新主模組狀態
+            if (data.modules) {
+                Object.entries(data.modules).forEach(([moduleName, status]) => {
+                    updateModuleStatus(moduleName, status.running);
+                });
+            }
+            
+            // 更新WebUI狀態
+            if (data.web_apps) {
+                Object.entries(data.web_apps).forEach(([appName, status]) => {
+                    updateWebAppStatus(appName, status.running, status.port_active);
+                });
+            }
+            
+            // 更新COM口列表
+            if (data.com_ports) {
+                updateComPortSelects(data.com_ports);
+            }
+            
+            // 調試輸出
+            console.log('狀態更新:', {
+                modbus_server: data.modbus_server,
+                modules: data.modules,
+                web_apps: data.web_apps
+            });
+        }
+
+        function updateModuleStatus(moduleName, isRunning) {
+            const statusDot = document.getElementById(`${moduleName}-status-dot`);
+            const statusText = document.getElementById(`${moduleName}-status`);
+            const toggle = document.querySelector(`[data-module="${moduleName}"]`);
+            
+            if (statusDot) {
+                statusDot.classList.toggle('active', isRunning);
+            }
+            
+            if (statusText) {
+                statusText.textContent = isRunning ? '運行中' : '停止';
+            }
+            
+            if (toggle) {
+                toggle.classList.toggle('active', isRunning);
+            }
+        }
+
+        function updateWebAppStatus(appName, isRunning, portActive) {
+            const toggle = document.querySelector(`[data-module="${appName}"]`);
+            const moduleName = appName.replace('_app', '');
+            const webNav = document.getElementById(`${moduleName}-web-nav`);
+            
+            if (toggle) {
+                toggle.classList.toggle('active', isRunning);
+            }
+            
+            if (webNav) {
+                if (portActive) {
+                    webNav.classList.remove('disabled');
+                } else {
+                    webNav.classList.add('disabled');
+                }
+            }
+        }
+
+        function startStatusMonitoring() {
+            socket.emit('start_monitoring');
+        }
+
+        function addLog(source, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span>[${source}]</span> ${message}
+            `;
+            
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+            
+            // 限制日誌數量
+            while (logsContainer.children.length > 100) {
+                logsContainer.removeChild(logsContainer.firstChild);
+            }
+        }
+
+    </script>
+</body>
+</html>

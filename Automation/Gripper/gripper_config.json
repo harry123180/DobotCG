@@ -1,0 +1,38 @@
+{
+  "module_id": "夾爪模組",
+  "rtu_connection": {
+    "port": "COM3",
+    "baudrate": 115200,
+    "parity": "N",
+    "stopbits": 1,
+    "timeout": 1.0
+  },
+  "tcp_server": {
+    "host": "127.0.0.1",
+    "port": 502,
+    "unit_id": 1,
+    "timeout": 1.0
+  },
+  "modbus_mapping": {
+    "base_address": 500
+  },
+  "timing": {
+    "fast_loop_interval": 0.05,
+    "command_delay": 0.02,
+    "reconnect_interval": 5.0
+  },
+  "grippers": {
+    "PGC": {
+      "unit_id": 6,
+      "enabled": true
+    },
+    "PGHL": {
+      "unit_id": 5,
+      "enabled": true
+    },
+    "PGE": {
+      "unit_id": 4,
+      "enabled": true
+    }
+  }
+}

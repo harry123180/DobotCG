@@ -1,0 +1,22 @@
+{
+  "module_id": "Angle_Adjustment_Web_App",
+  "modbus_tcp": {
+    "host": "127.0.0.1",
+    "port": 502,
+    "unit_id": 1,
+    "timeout": 3.0
+  },
+  "web_server": {
+    "host": "0.0.0.0",
+    "port": 5087,
+    "debug": false
+  },
+  "modbus_mapping": {
+    "base_address": 700,
+    "ccd3_base_address": 800
+  },
+  "ui_settings": {
+    "refresh_interval": 2.0,
+    "auto_refresh": true
+  }
+}

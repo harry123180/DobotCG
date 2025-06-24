@@ -1,0 +1,39 @@
+{
+  "module_id": "XC100_01",
+  "description": "XC100伺服驅動器控制模組",
+  "xc_connection": {
+    "port": "COM5",
+    "baudrate": 115200,
+    "unit_id": 2,
+    "timeout": 2.0,
+    "retry_count": 3,
+    "retry_delay": 0.5
+  },
+  "tcp_server": {
+    "host": "127.0.0.1",
+    "port": 502,
+    "unit_id": 1,
+    "timeout": 3.0
+  },
+  "modbus_mapping": {
+    "base_address": 1000,
+    "register_count": 50
+  },
+  "positions": {
+    "A": 400,
+    "B": 2682
+  },
+  "timing": {
+    "command_timeout": 3.0,
+    "movement_delay": 1.0,
+    "monitor_interval": 2.0,
+    "register_delay": 0.2,
+    "command_delay": 0.1,
+    "tcp_update_interval": 0.1
+  },
+  "hardware_compensation": {
+    "enable_slow_mode": true,
+    "max_concurrent_requests": 1,
+    "status_check_interval": 5.0
+  }
+}

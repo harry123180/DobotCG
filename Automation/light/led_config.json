@@ -1,0 +1,25 @@
+{
+  "module_id": "LED控制器模組",
+  "serial_connection": {
+    "port": "COM4",
+    "baudrate": 9600,
+    "parity": "N",
+    "stopbits": 1,
+    "bytesize": 8,
+    "timeout": 1.0
+  },
+  "tcp_server": {
+    "host": "127.0.0.1",
+    "port": 502,
+    "unit_id": 1,
+    "timeout": 3.0
+  },
+  "modbus_mapping": {
+    "base_address": 600
+  },
+  "timing": {
+    "fast_loop_interval": 0.05,
+    "command_delay": 0.1,
+    "serial_delay": 0.05
+  }
+}

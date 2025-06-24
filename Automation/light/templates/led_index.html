@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LED控制器Web介面</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .status-item {
+            text-align: center;
+        }
+        
+        .status-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .main-content {
+            padding: 40px;
+        }
+        
+        .controls-section {
+            margin-bottom: 40px;
+        }
+        
+        .section-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .led-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .led-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+        
+        .led-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .led-card.active {
+            border-color: #4CAF50;
+            background: linear-gradient(135deg, #f8fff8 0%, #e8f5e8 100%);
+        }
+        
+        .led-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .led-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .led-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        
+        .status-on {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .status-off {
+            background: #f44336;
+            color: white;
+        }
+        
+        .brightness-control {
+            margin-bottom: 20px;
+        }
+        
+        .brightness-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .brightness-value {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .brightness-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        
+        .brightness-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        .brightness-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        .led-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-on {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-on:hover {
+            background: #45a049;
+        }
+        
+        .btn-off {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-off:hover {
+            background: #da190b;
+        }
+        
+        .global-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin: 30px 0;
+        }
+        
+        .btn-global {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            min-width: 150px;
+            height: 50px;
+        }
+        
+        .btn-all-on {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+        
+        .btn-all-off {
+            background: linear-gradient(135deg, #f44336, #da190b);
+            color: white;
+        }
+        
+        .btn-reset {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+        }
+        
+        .btn-error-reset {
+            background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+            color: white;
+        }
+        
+        .connection-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .connection-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .connection-info {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .status-connected {
+            background: #4CAF50;
+        }
+        
+        .status-disconnected {
+            background: #f44336;
+        }
+        
+        .config-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .config-input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        
+        .btn-connect {
+            background: #2196F3;
+            color: white;
+            padding: 10px 20px;
+        }
+        
+        .btn-connect:hover {
+            background: #1976D2;
+        }
+        
+        .info-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .info-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .info-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        @media (max-width: 768px) {
+            .led-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .global-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .connection-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .status-bar {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-lightbulb"></i> LED控制器Web介面</h1>
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-label">模組狀態</div>
+                    <div class="status-value" id="moduleStatus">初始化</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">設備連接</div>
+                    <div class="status-value" id="deviceConnection">檢查中</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">啟用通道</div>
+                    <div class="status-value" id="activeChannels">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">錯誤代碼</div>
+                    <div class="status-value" id="errorCode">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">操作計數</div>
+                    <div class="status-value" id="operationCount">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">基地址</div>
+                    <div class="status-value" id="baseAddress">500</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <!-- 連接控制面板 -->
+            <div class="connection-panel">
+                <h3 class="section-title">
+                    <i class="fas fa-plug"></i> 連接設定
+                </h3>
+                <div class="connection-controls">
+                    <div class="connection-info">
+                        <div class="connection-status">
+                            <div class="status-indicator status-disconnected" id="connectionIndicator"></div>
+                            <span id="connectionText">未連接</span>
+                        </div>
+                        <div class="config-group">
+                            <label>服務器:</label>
+                            <input type="text" class="config-input" id="serverHost" value="127.0.0.1" placeholder="IP地址">
+                            <label>端口:</label>
+                            <input type="number" class="config-input" id="serverPort" value="502" placeholder="端口">
+                        </div>
+                    </div>
+                    <button class="btn btn-connect" id="connectBtn" onclick="toggleConnection()">
+                        <i class="fas fa-plug"></i> 連接
+                    </button>
+                </div>
+            </div>
+            
+            <!-- LED控制區域 -->
+            <div class="controls-section">
+                <h3 class="section-title">
+                    <i class="fas fa-lightbulb"></i> LED通道控制
+                </h3>
+                <div class="led-grid">
+                    <!-- L1 控制 -->
+                    <div class="led-card" id="ledCard1">
+                        <div class="led-header">
+                            <div class="led-title">
+                                <i class="fas fa-lightbulb"></i> L1 通道
+                            </div>
+                            <div class="led-status status-off" id="status1">關閉</div>
+                        </div>
+                        <div class="brightness-control">
+                            <div class="brightness-label">
+                                <span>亮度控制</span>
+                                <span class="brightness-value" id="brightness1">0</span>
+                            </div>
+                            <input type="range" class="brightness-slider" id="slider1" 
+                                   min="0" max="511" value="0" 
+                                   oninput="updateBrightness(1, this.value)">
+                        </div>
+                        <div class="led-controls">
+                            <button class="btn btn-on" onclick="turnOn(1)">
+                                <i class="fas fa-power-off"></i> 開啟
+                            </button>
+                            <button class="btn btn-off" onclick="turnOff(1)">
+                                <i class="fas fa-power-off"></i> 關閉
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- L2 控制 -->
+                    <div class="led-card" id="ledCard2">
+                        <div class="led-header">
+                            <div class="led-title">
+                                <i class="fas fa-lightbulb"></i> L2 通道
+                            </div>
+                            <div class="led-status status-off" id="status2">關閉</div>
+                        </div>
+                        <div class="brightness-control">
+                            <div class="brightness-label">
+                                <span>亮度控制</span>
+                                <span class="brightness-value" id="brightness2">0</span>
+                            </div>
+                            <input type="range" class="brightness-slider" id="slider2" 
+                                   min="0" max="511" value="0" 
+                                   oninput="updateBrightness(2, this.value)">
+                        </div>
+                        <div class="led-controls">
+                            <button class="btn btn-on" onclick="turnOn(2)">
+                                <i class="fas fa-power-off"></i> 開啟
+                            </button>
+                            <button class="btn btn-off" onclick="turnOff(2)">
+                                <i class="fas fa-power-off"></i> 關閉
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- L3 控制 -->
+                    <div class="led-card" id="ledCard3">
+                        <div class="led-header">
+                            <div class="led-title">
+                                <i class="fas fa-lightbulb"></i> L3 通道
+                            </div>
+                            <div class="led-status status-off" id="status3">關閉</div>
+                        </div>
+                        <div class="brightness-control">
+                            <div class="brightness-label">
+                                <span>亮度控制</span>
+                                <span class="brightness-value" id="brightness3">0</span>
+                            </div>
+                            <input type="range" class="brightness-slider" id="slider3" 
+                                   min="0" max="511" value="0" 
+                                   oninput="updateBrightness(3, this.value)">
+                        </div>
+                        <div class="led-controls">
+                            <button class="btn btn-on" onclick="turnOn(3)">
+                                <i class="fas fa-power-off"></i> 開啟
+                            </button>
+                            <button class="btn btn-off" onclick="turnOff(3)">
+                                <i class="fas fa-power-off"></i> 關閉
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- L4 控制 -->
+                    <div class="led-card" id="ledCard4">
+                        <div class="led-header">
+                            <div class="led-title">
+                                <i class="fas fa-lightbulb"></i> L4 通道
+                            </div>
+                            <div class="led-status status-off" id="status4">關閉</div>
+                        </div>
+                        <div class="brightness-control">
+                            <div class="brightness-label">
+                                <span>亮度控制</span>
+                                <span class="brightness-value" id="brightness4">0</span>
+                            </div>
+                            <input type="range" class="brightness-slider" id="slider4" 
+                                   min="0" max="511" value="0" 
+                                   oninput="updateBrightness(4, this.value)">
+                        </div>
+                        <div class="led-controls">
+                            <button class="btn btn-on" onclick="turnOn(4)">
+                                <i class="fas fa-power-off"></i> 開啟
+                            </button>
+                            <button class="btn btn-off" onclick="turnOff(4)">
+                                <i class="fas fa-power-off"></i> 關閉
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 全域控制 -->
+            <div class="global-controls">
+                <button class="btn btn-global btn-all-on" onclick="allOn()">
+                    <i class="fas fa-lightbulb"></i> 全部開啟
+                </button>
+                <button class="btn btn-global btn-all-off" onclick="allOff()">
+                    <i class="fas fa-power-off"></i> 全部關閉
+                </button>
+                <button class="btn btn-global btn-reset" onclick="resetDevice()">
+                    <i class="fas fa-redo"></i> 重置設備
+                </button>
+                <button class="btn btn-global btn-error-reset" onclick="errorReset()">
+                    <i class="fas fa-exclamation-triangle"></i> 錯誤重置
+                </button>
+            </div>
+            
+            <!-- 系統資訊 -->
+            <div class="info-panel">
+                <h3 class="section-title">
+                    <i class="fas fa-info-circle"></i> 系統資訊
+                </h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Modbus基地址</div>
+                        <div class="info-value" id="infoBaseAddress">500</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">狀態寄存器</div>
+                        <div class="info-value">500-515</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">指令寄存器</div>
+                        <div class="info-value">520-524</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">支援亮度範圍</div>
+                        <div class="info-value">0-511</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">通訊協議</div>
+                        <div class="info-value">RS232 9600bps</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">更新時間</div>
+                        <div class="info-value" id="lastUpdate">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SocketIO連接
+        const socket = io();
+        let isConnected = false;
+        
+        // 連接事件
+        socket.on('connect', function() {
+            console.log('已連接到Web服務器');
+        });
+        
+        socket.on('disconnect', function() {
+            console.log('與Web服務器連接中斷');
+        });
+        
+        // 狀態更新事件
+        socket.on('status', function(data) {
+            updateStatus(data);
+        });
+        
+        socket.on('status_update', function(data) {
+            updateStatus(data);
+        });
+        
+        socket.on('command_result', function(data) {
+            if (!data.success) {
+                alert('指令執行失敗: ' + (data.error || '未知錯誤'));
+            }
+        });
+        
+        socket.on('config_updated', function(data) {
+            if (data.success) {
+                console.log('配置已更新');
+            } else {
+                alert('配置更新失敗: ' + data.error);
+            }
+        });
+        
+        // 更新狀態顯示
+        function updateStatus(data) {
+            if (data.error) {
+                console.error('狀態錯誤:', data.error);
+                document.getElementById('connectionIndicator').className = 'status-indicator status-disconnected';
+                document.getElementById('connectionText').textContent = '連接錯誤';
+                return;
+            }
+            
+            // 更新連接狀態
+            const deviceConnected = data.device_connection === "已連接";
+            document.getElementById('connectionIndicator').className = 
+                'status-indicator ' + (deviceConnected ? 'status-connected' : 'status-disconnected');
+            document.getElementById('connectionText').textContent = 
+                deviceConnected ? '設備已連接' : '設備未連接';
+            
+            // 更新狀態欄
+            document.getElementById('moduleStatus').textContent = data.module_status || '未知';
+            document.getElementById('deviceConnection').textContent = data.device_connection || '未知';
+            document.getElementById('activeChannels').textContent = data.active_channels || 0;
+            document.getElementById('errorCode').textContent = data.error_code || 0;
+            document.getElementById('operationCount').textContent = data.operation_count || 0;
+            
+            if (data.base_address) {
+                document.getElementById('baseAddress').textContent = data.base_address;
+                document.getElementById('infoBaseAddress').textContent = data.base_address;
+            }
+            
+            // 更新通道狀態
+            if (data.channels) {
+                for (let i = 1; i <= 4; i++) {
+                    const channelKey = `L${i}`;
+                    const channel = data.channels[channelKey];
+                    
+                    if (channel) {
+                        updateChannelDisplay(i, channel.state, channel.brightness);
+                    }
+                }
+            }
+            
+            // 更新時間戳
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        }
+        
+        // 更新通道顯示
+        function updateChannelDisplay(channel, state, brightness) {
+            const statusElement = document.getElementById(`status${channel}`);
+            const cardElement = document.getElementById(`ledCard${channel}`);
+            const sliderElement = document.getElementById(`slider${channel}`);
+            const brightnessElement = document.getElementById(`brightness${channel}`);
+            
+            // 更新狀態顯示
+            if (state) {
+                statusElement.textContent = '開啟';
+                statusElement.className = 'led-status status-on';
+                cardElement.classList.add('active');
+            } else {
+                statusElement.textContent = '關閉';
+                statusElement.className = 'led-status status-off';
+                cardElement.classList.remove('active');
+            }
+            
+            // 更新亮度顯示
+            sliderElement.value = brightness;
+            brightnessElement.textContent = brightness;
+        }
+        
+        // 連接控制
+        function toggleConnection() {
+            const host = document.getElementById('serverHost').value;
+            const port = parseInt(document.getElementById('serverPort').value);
+            
+            socket.emit('update_config', {
+                host: host,
+                port: port
+            });
+            
+            fetch('/api/connect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('connectBtn').innerHTML = '<i class="fas fa-check"></i> 已連接';
+                } else {
+                    alert('連接失敗');
+                }
+            });
+        }
+        
+        // 控制函數
+        function updateBrightness(channel, brightness) {
+            document.getElementById(`brightness${channel}`).textContent = brightness;
+            
+            // 防抖動 - 延遲發送指令
+            clearTimeout(window[`brightnessTimeout${channel}`]);
+            window[`brightnessTimeout${channel}`] = setTimeout(() => {
+                socket.emit('set_brightness', {
+                    channel: channel,
+                    brightness: parseInt(brightness)
+                });
+            }, 200);
+        }
+        
+        function turnOn(channel) {
+            socket.emit('channel_control', {
+                channel: channel,
+                action: 'on'
+            });
+        }
+        
+        function turnOff(channel) {
+            socket.emit('channel_control', {
+                channel: channel,
+                action: 'off'
+            });
+        }
+        
+        function allOn() {
+            socket.emit('global_control', {
+                action: 'all_on'
+            });
+        }
+        
+        function allOff() {
+            socket.emit('global_control', {
+                action: 'all_off'
+            });
+        }
+        
+        function resetDevice() {
+            if (confirm('確定要重置設備嗎？')) {
+                socket.emit('global_control', {
+                    action: 'reset'
+                });
+            }
+        }
+        
+        function errorReset() {
+            socket.emit('global_control', {
+                action: 'error_reset'
+            });
+        }
+        
+        // 定期請求狀態更新
+        setInterval(() => {
+            socket.emit('get_status');
+        }, 3000);
+        
+        // 頁面載入完成後初始化
+        window.addEventListener('load', function() {
+            console.log('LED控制器Web介面已載入');
+            socket.emit('get_status');
+        });
+    </script>
+</body>
+</html>

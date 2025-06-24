@@ -1,0 +1,18 @@
+{
+  "connection": {
+    "baudrate": 115200,
+    "unit_id": 2,
+    "timeout": 0.2,
+    "last_port": "COM5 (USB Serial Port (COM5))"
+  },
+  "positions": {
+    "position_A": 400,
+    "position_B": 2682,
+    "custom_positions": {}
+  },
+  "ui": {
+    "appearance_mode": "light",
+    "color_theme": "blue",
+    "window_geometry": "1293x848+-141+37"
+  }
+}

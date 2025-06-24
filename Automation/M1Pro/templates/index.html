@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>機械臂狀態機控制面板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .status-panel {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-left: 5px solid #4facfe;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .status-item {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .status-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .status-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .status-text {
+            font-size: 0.9em;
+            color: #888;
+        }
+        
+        .connected { color: #28a745; }
+        .disconnected { color: #dc3545; }
+        .running { color: #ffc107; }
+        .ready { color: #28a745; }
+        .waiting { color: #6c757d; }
+        
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-group {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .control-group h3 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+            color: white;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .registers-panel {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        
+        .registers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .register-item {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .register-addr {
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .register-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .auto-refresh {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .auto-refresh label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>機械臂狀態機控制面板</h1>
+            <p>Modbus地址基址400 | 循環測試控制系統</p>
+        </div>
+        
+        <div class="content">
+            <div id="message"></div>
+            
+            <!-- 狀態顯示面板 -->
+            <div class="status-panel">
+                <h3>系統狀態監控</h3>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-label">Modbus連接</div>
+                        <div class="status-value" id="connectionStatus">●</div>
+                        <div class="status-text" id="connectionText">檢查中...</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">控制指令(400)</div>
+                        <div class="status-value" id="controlValue">-</div>
+                        <div class="status-text">觸發狀態</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">運行狀態(401)</div>
+                        <div class="status-value" id="runningValue">-</div>
+                        <div class="status-text">執行狀態</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">準備狀態(402)</div>
+                        <div class="status-value" id="standbyValue">-</div>
+                        <div class="status-text">待命狀態</div>
+                    </div>
+                </div>
+                
+                <div class="auto-refresh">
+                    <label>
+                        <input type="checkbox" id="autoRefresh" checked> 自動更新狀態 (每秒)
+                    </label>
+                </div>
+            </div>
+            
+            <!-- 控制面板 -->
+            <div class="control-panel">
+                <div class="control-group">
+                    <h3>連接控制</h3>
+                    <button class="btn btn-primary" onclick="connectModbus()">連接Modbus</button>
+                    <button class="btn btn-warning" onclick="disconnectModbus()">斷開連接</button>
+                </div>
+                
+                <div class="control-group">
+                    <h3>動作控制</h3>
+                    <button class="btn btn-success" onclick="triggerAction()" id="triggerBtn">開始循環動作</button>
+                    <button class="btn btn-danger" onclick="stopAction()">停止動作</button>
+                </div>
+                
+                <div class="control-group">
+                    <h3>系統操作</h3>
+                    <button class="btn btn-warning" onclick="resetStatus()">重置狀態</button>
+                    <button class="btn btn-primary" onclick="refreshStatus()">手動更新</button>
+                </div>
+                
+                <div class="control-group">
+                    <h3>進階功能</h3>
+                    <button class="btn btn-primary" onclick="showRegisters()">查看寄存器</button>
+                    <button class="btn btn-warning" onclick="clearMessage()">清除訊息</button>
+                </div>
+            </div>
+            
+            <!-- 寄存器顯示面板 -->
+            <div class="registers-panel" id="registersPanel" style="display: none;">
+                <h3>寄存器狀態 (400-409)</h3>
+                <div class="registers-grid" id="registersGrid">
+                    <!-- 動態生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval;
+        let isConnected = false;
+        
+        // 頁面載入時初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshStatus();
+            startAutoRefresh();
+        });
+        
+        // 自動更新控制
+        function startAutoRefresh() {
+            const checkbox = document.getElementById('autoRefresh');
+            if (checkbox.checked) {
+                autoRefreshInterval = setInterval(refreshStatus, 1000);
+            }
+        }
+        
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        }
+        
+        document.getElementById('autoRefresh').addEventListener('change', function() {
+            if (this.checked) {
+                startAutoRefresh();
+            } else {
+                stopAutoRefresh();
+            }
+        });
+        
+        // API呼叫函數
+        async function apiCall(url, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+                
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+                
+                const response = await fetch(url, options);
+                const result = await response.json();
+                return result;
+            } catch (error) {
+                console.error('API呼叫錯誤:', error);
+                showMessage('網路連接錯誤', 'error');
+                return { success: false, message: '網路連接錯誤' };
+            }
+        }
+        
+        // 顯示訊息
+        function showMessage(message, type = 'success') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+        }
+        
+        function clearMessage() {
+            const messageDiv = document.getElementById('message');
+            messageDiv.style.display = 'none';
+        }
+        
+        // 更新狀態顯示
+        function updateStatus(status) {
+            isConnected = status.connected;
+            
+            // 更新連接狀態
+            const connectionStatus = document.getElementById('connectionStatus');
+            const connectionText = document.getElementById('connectionText');
+            
+            if (status.connected) {
+                connectionStatus.className = 'status-value connected';
+                connectionText.textContent = '已連接';
+            } else {
+                connectionStatus.className = 'status-value disconnected';
+                connectionText.textContent = '未連接';
+            }
+            
+            // 更新控制指令狀態
+            document.getElementById('controlValue').textContent = status.control;
+            
+            // 更新運行狀態
+            const runningValue = document.getElementById('runningValue');
+            runningValue.textContent = status.running;
+            runningValue.className = status.running === 1 ? 'status-value running' : 'status-value';
+            
+            // 更新準備狀態
+            const standbyValue = document.getElementById('standbyValue');
+            standbyValue.textContent = status.standby;
+            standbyValue.className = status.standby === 1 ? 'status-value ready' : 'status-value waiting';
+            
+            // 更新觸發按鈕狀態
+            const triggerBtn = document.getElementById('triggerBtn');
+            if (status.connected && status.standby === 1 && status.running === 0) {
+                triggerBtn.disabled = false;
+                triggerBtn.textContent = '開始循環動作';
+            } else if (status.running === 1) {
+                triggerBtn.disabled = true;
+                triggerBtn.textContent = '執行中...';
+            } else {
+                triggerBtn.disabled = true;
+                triggerBtn.textContent = '不可用';
+            }
+        }
+        
+        // 連接Modbus
+        async function connectModbus() {
+            const result = await apiCall('/api/connect', 'POST');
+            showMessage(result.message, result.success ? 'success' : 'error');
+            if (result.success) {
+                refreshStatus();
+            }
+        }
+        
+        // 斷開Modbus
+        async function disconnectModbus() {
+            const result = await apiCall('/api/disconnect', 'POST');
+            showMessage(result.message, result.success ? 'success' : 'error');
+            refreshStatus();
+        }
+        
+        // 觸發動作
+        async function triggerAction() {
+            if (!isConnected) {
+                showMessage('請先連接Modbus', 'error');
+                return;
+            }
+            
+            const result = await apiCall('/api/trigger', 'POST');
+            showMessage(result.message, result.success ? 'success' : 'error');
+            
+            if (result.success) {
+                setTimeout(refreshStatus, 500);
+            }
+        }
+        
+        // 停止動作
+        async function stopAction() {
+            const result = await apiCall('/api/stop', 'POST');
+            showMessage(result.message, result.success ? 'success' : 'error');
+            setTimeout(refreshStatus, 500);
+        }
+        
+        // 重置狀態
+        async function resetStatus() {
+            const result = await apiCall('/api/reset', 'POST');
+            showMessage(result.message, result.success ? 'success' : 'error');
+            setTimeout(refreshStatus, 500);
+        }
+        
+        // 更新狀態
+        async function refreshStatus() {
+            const status = await apiCall('/api/status');
+            updateStatus(status);
+        }
+        
+        // 顯示寄存器
+        async function showRegisters() {
+            const result = await apiCall('/api/registers');
+            
+            if (result.success) {
+                const panel = document.getElementById('registersPanel');
+                const grid = document.getElementById('registersGrid');
+                
+                grid.innerHTML = '';
+                
+                Object.entries(result.registers).forEach(([addr, value]) => {
+                    const item = document.createElement('div');
+                    item.className = 'register-item';
+                    item.innerHTML = `
+                        <div class="register-addr">${addr}</div>
+                        <div class="register-value">${value}</div>
+                    `;
+                    grid.appendChild(item);
+                });
+                
+                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            } else {
+                showMessage(result.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

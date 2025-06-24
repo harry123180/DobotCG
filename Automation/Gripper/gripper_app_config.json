@@ -1,0 +1,50 @@
+{
+  "module_id": "夾爪Web UI",
+  "modbus_tcp": {
+    "host": "127.0.0.1",
+    "port": 502,
+    "unit_id": 1,
+    "timeout": 1.0
+  },
+  "web_server": {
+    "host": "0.0.0.0",
+    "port": 5054,
+    "debug": false
+  },
+  "ui_settings": {
+    "refresh_interval": 3.0,
+    "manual_mode": false
+  },
+  "grippers": {
+    "PGC": {
+      "name": "PGC夾爪",
+      "enabled": true,
+      "positions": {
+        "open": 1000,
+        "close": 0
+      },
+      "max_force": 100,
+      "max_speed": 100
+    },
+    "PGHL": {
+      "name": "PGHL夾爪",
+      "enabled": true,
+      "positions": {
+        "open": 5000,
+        "close": 0
+      },
+      "max_force": 100,
+      "max_speed": 100
+    },
+    "PGE": {
+      "name": "PGE夾爪",
+      "enabled": true,
+      "positions": {
+        "open": 1000,
+        "close": 0
+      },
+      "max_force": 100,
+      "max_speed": 100
+    }
+  }
+}

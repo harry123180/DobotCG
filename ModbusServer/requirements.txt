@@ -1,0 +1,25 @@
+# Modbus TCP Server 依賴清單
+# 用於生產環境建置
+
+# 核心 Modbus 功能
+pymodbus>=3.0.0
+
+# Web 介面
+Flask>=2.0.0
+Werkzeug>=2.0.0
+Jinja2>=3.0.0
+MarkupSafe>=2.0.0
+click>=8.0.0
+itsdangerous>=2.0.0
+
+# 建置工具
+PyInstaller>=5.0
+
+# 可選的加密支援
+cryptography>=3.4.8
+
+# 序列埠支援 (如果需要 RTU 模式)
+pyserial>=3.5
+
+# 網路相關
+twisted>=22.0.0

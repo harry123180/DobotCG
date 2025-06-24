@@ -1,0 +1,2300 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCD1 視覺檢測系統 v4.1 - 運動控制握手版本 + 世界座標轉換 + 保護範圍</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .panel h2 {
+            margin-bottom: 20px;
+            color: #4a5568;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-connected { background: #48bb78; }
+        .status-disconnected { background: #f56565; }
+        .status-processing { background: #ed8936; animation: pulse 1s infinite; }
+        .status-ready { background: #48bb78; }
+        .status-running { background: #ed8936; animation: pulse 1s infinite; }
+        .status-alarm { background: #f56565; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            margin: 5px;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+            color: white;
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #4fd1c7 0%, #38b2ac 100%);
+            color: white;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .input-group input {
+            flex: 1;
+        }
+
+        .input-group .btn {
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .info-item {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-item .label {
+            font-size: 12px;
+            color: #718096;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .info-item .value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .image-container {
+            text-align: center;
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .results-panel {
+            grid-column: 1 / -1;
+        }
+
+        .results-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+            background: #f7fafc;
+        }
+
+        .circle-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #48bb78;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .circle-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .circle-coords {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .coord-group {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .coord-group .coord-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .coord-group .coord-value {
+            font-size: 14px;
+            color: #2d3748;
+            font-weight: 500;
+        }
+
+        .world-coord {
+            background: #e6fffa;
+            border-left: 3px solid #4fd1c7;
+        }
+
+        .world-coord.disabled {
+            background: #f7fafc;
+            border-left: 3px solid #cbd5e0;
+            opacity: 0.6;
+        }
+
+        .pixel-coord {
+            background: #ebf8ff;
+            border-left: 3px solid #4299e1;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border-left: 4px solid #48bb78;
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            max-width: 400px;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.error {
+            border-left-color: #f56565;
+        }
+
+        .handshake-panel {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f9ff 100%);
+            border: 2px solid #48bb78;
+        }
+
+        .handshake-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .state-machine {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .state-bits {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .state-bit {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .state-bit.active {
+            border-color: #48bb78;
+            background: #f0fff4;
+        }
+
+        .state-bit.alarm {
+            border-color: #f56565;
+            background: #fef2f2;
+        }
+
+        .state-bit.running {
+            border-color: #ed8936;
+            background: #fffaf0;
+            animation: pulse 1s infinite;
+        }
+
+        .command-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .registers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .register-group {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .register-group h4 {
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .register-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 13px;
+        }
+
+        .register-item:last-child {
+            border-bottom: none;
+        }
+
+        .register-name {
+            color: #4a5568;
+            flex: 1;
+        }
+
+        .register-value {
+            font-weight: 600;
+            color: #2d3748;
+            text-align: right;
+        }
+
+        .register-value.highlight {
+            color: #f56565;
+            font-weight: 700;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .handshake-info {
+            background: #e6fffa;
+            border: 1px solid #4fd1c7;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .handshake-info h4 {
+            color: #234e52;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .handshake-info ol {
+            color: #2d3748;
+            padding-left: 20px;
+            line-height: 1.6;
+        }
+
+        .handshake-info li {
+            margin-bottom: 8px;
+        }
+
+        /* 標定相關樣式 */
+        .calibration-panel {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #fff5f5 0%, #f0fff4 100%);
+            border: 2px solid #4fd1c7;
+        }
+
+        .calibration-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .calibration-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4fd1c7;
+        }
+
+        .calibration-item.valid {
+            border-left-color: #48bb78;
+            background: #f0fff4;
+        }
+
+        .calibration-item.invalid {
+            border-left-color: #f56565;
+            background: #fef2f2;
+        }
+
+        .file-info {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .world-coord-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .world-coord-indicator.enabled {
+            background: #e6fffa;
+            color: #234e52;
+            border: 1px solid #4fd1c7;
+        }
+
+        .world-coord-indicator.disabled {
+            background: #fef2f2;
+            color: #742a2a;
+            border: 1px solid #f56565;
+        }
+
+        .version-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        /* 保護範圍相關樣式 v4.1 */
+        .protection-zone-panel {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #fff9c4 0%, #f0fff4 100%);
+            border: 2px solid #f6ad55;
+        }
+
+        .protection-zone-config {
+            margin-top: 15px;
+        }
+
+        .coordinate-settings {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .coordinate-settings.enabled {
+            opacity: 1 !important;
+            background: #f0fff4;
+            border: 1px solid #48bb78;
+        }
+
+        .protection-zone-info {
+            background: #e6fffa;
+            border: 1px solid #4fd1c7;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .protection-zone-info h4 {
+            color: #234e52;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .protection-zone-info ul {
+            color: #2d3748;
+            padding-left: 20px;
+            line-height: 1.6;
+        }
+
+        .protection-zone-info li {
+            margin-bottom: 8px;
+        }
+
+        .zone-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .zone-indicator.enabled {
+            background: #e6fffa;
+            color: #234e52;
+            border: 1px solid #4fd1c7;
+        }
+
+        .zone-indicator.disabled {
+            background: #fef2f2;
+            color: #742a2a;
+            border: 1px solid #f56565;
+        }
+
+        /* 修改圓形結果顯示，支援保護範圍狀態 */
+        .circle-item.in-zone {
+            border-left-color: #48bb78;
+            background: #f0fff4;
+        }
+
+        .circle-item.out-zone {
+            border-left-color: #f56565;
+            background: #fef2f2;
+            opacity: 0.7;
+        }
+
+        .zone-status {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .zone-status.valid {
+            background: #c6f6d5;
+            color: #276749;
+        }
+
+        .zone-status.filtered {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .registers-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .state-bits {
+                grid-template-columns: 1fr;
+            }
+
+            .command-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .circle-coords {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CCD1 視覺檢測系統 <span class="version-badge">v4.1</span></h1>
+            <div class="subtitle">運動控制握手版本 + 世界座標轉換 + 保護範圍過濾 - 工業自動化專用</div>
+        </div>
+
+        <!-- 相機標定面板 -->
+        <div class="panel calibration-panel">
+            <h2>
+                <span class="status-indicator" id="calibrationStatus"></span>
+                相機標定與世界座標轉換
+            </h2>
+            
+            <div class="calibration-status">
+                <div class="calibration-item" id="intrinsicStatus">
+                    <div style="font-weight: bold; margin-bottom: 8px;">內參狀態</div>
+                    <div id="intrinsicInfo">尚未載入</div>
+                </div>
+                <div class="calibration-item" id="extrinsicStatus">
+                    <div style="font-weight: bold; margin-bottom: 8px;">外參狀態</div>
+                    <div id="extrinsicInfo">尚未載入</div>
+                </div>
+                <div class="calibration-item" id="transformerStatus">
+                    <div style="font-weight: bold; margin-bottom: 8px;">轉換器狀態</div>
+                    <div id="transformerInfo">未啟用</div>
+                </div>
+                <div class="calibration-item" id="workingDirStatus">
+                    <div style="font-weight: bold; margin-bottom: 8px;">工作目錄</div>
+                    <div id="workingDirInfo" class="file-info">掃描中...</div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin: 20px 0;">
+                <button class="btn btn-info" onclick="scanCalibrationFiles()">掃描檔案</button>
+                <button class="btn btn-success" onclick="loadCalibrationData()" id="loadCalibBtn" disabled>確認導入</button>
+                <button class="btn btn-secondary" onclick="refreshCalibrationStatus()">刷新狀態</button>
+            </div>
+
+            <div class="handshake-info">
+                <h4>內外參檔案要求說明 (v4.1)</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <strong>內參檔案（嚴格命名）：</strong>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>camera_matrix_YYYYMMDD_HHMMSS.npy</li>
+                            <li>dist_coeffs_YYYYMMDD_HHMMSS.npy</li>
+                            <li>檔案必須成對存在且時間戳一致</li>
+                            <li>內參矩陣格式: 3×3</li>
+                            <li>畸變係數: 至少4個參數</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <strong>外參檔案（較寬鬆命名）：</strong>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>*extrinsic*.npy (包含extrinsic字串)</li>
+                            <li>包含rvec和tvec的字典格式</li>
+                            <li>rvec: 3×1旋轉向量</li>
+                            <li>tvec: 3×1平移向量</li>
+                        </ul>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; padding: 10px; background: #f0f9ff; border-radius: 6px;">
+                    <strong>操作步驟：</strong>
+                    1. 將NPY檔案放入程式同層目錄
+                    2. 點擊「掃描檔案」確認檔案
+                    3. 點擊「確認導入」載入標定數據
+                    4. 確認轉換器狀態為「已啟用」
+                    5. 世界座標轉換為Z=0平面投影，精度保留2位小數
+                </div>
+            </div>
+        </div>
+
+        <!-- 保護範圍控制面板 v4.1 -->
+        <div class="panel protection-zone-panel">
+            <h2>
+                <span class="status-indicator" id="protectionZoneStatus"></span>
+                保護範圍控制 <span class="version-badge">v4.1</span>
+            </h2>
+            
+            <div class="protection-zone-config">
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="protectionZoneEnable" onchange="updateProtectionZoneEnable()" disabled>
+                        <strong>啟用保護範圍檢測</strong>
+                        <small style="color: #f56565; font-weight: normal;">(需要世界座標功能)</small>
+                    </label>
+                    <small style="color: #666; margin-top: 5px; display: block;">
+                        僅有效範圍內的物件會被識別為可夾取物件
+                    </small>
+                </div>
+
+                <div class="coordinate-settings" id="coordinateSettings" style="opacity: 0.5;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="coord-group">
+                            <h4 style="color: #4a5568; margin-bottom: 15px;">X軸範圍 (mm)</h4>
+                            <div class="form-group">
+                                <label>X最小值</label>
+                                <input type="number" id="xMin" value="-122" step="0.01" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>X最大值</label>
+                                <input type="number" id="xMax" value="-4" step="0.01" disabled>
+                            </div>
+                        </div>
+                        
+                        <div class="coord-group">
+                            <h4 style="color: #4a5568; margin-bottom: 15px;">Y軸範圍 (mm)</h4>
+                            <div class="form-group">
+                                <label>Y最小值</label>
+                                <input type="number" id="yMin" value="243" step="0.01" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>Y最大值</label>
+                                <input type="number" id="yMax" value="341" step="0.01" disabled>
+                            </div>
+                        </div>
+                    </div>
+                                <label>X最小值</label>
+                                <input type="number" id="xMin" value="-122" step="0.01" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>X最大值</label>
+                                <input type="number" id="xMax" value="-4" step="0.01" disabled>
+                            </div>
+                        </div>
+                        
+                        <div class="coord-group">
+                            <h4 style="color: #4a5568; margin-bottom: 15px;">Y軸範圍 (mm)</h4>
+                            <div class="form-group">
+                                <label>Y最小值</label>
+                                <input type="number" id="yMin" value="243" step="0.01" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>Y最大值</label>
+                                <input type="number" id="yMax" value="341" step="0.01" disabled>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin: 20px 0;">
+                    <button class="btn btn-primary" onclick="applyProtectionZone()" id="applyZoneBtn" disabled>
+                        應用設定
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetProtectionZone()">
+                        重置為默認值
+                    </button>
+                    <button class="btn btn-info" onclick="refreshProtectionZone()">
+                        刷新狀態
+                    </button>
+                </div>
+
+                <div class="protection-zone-info">
+                    <h4>保護範圍說明</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <strong>功能說明：</strong>
+                            <ul style="margin: 10px 0; padding-left: 20px; line-height: 1.6;">
+                                <li>啟用後，只有在指定範圍內的物件才會被識別</li>
+                                <li>超出範圍的物件將被過濾，不會出現在檢測結果中</li>
+                                <li>需要載入世界座標標定數據才能使用此功能</li>
+                                <li>關閉時，所有檢測到的物件都會被顯示</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <strong>座標範圍設定：</strong>
+                            <ul style="margin: 10px 0; padding-left: 20px; line-height: 1.6;">
+                                <li><strong>X軸:</strong> -122 ≤ X ≤ -4 (mm)</li>
+                                <li><strong>Y軸:</strong> 243 ≤ Y ≤ 341 (mm)</li>
+                                <li>單位：毫米 (mm)</li>
+                                <li>精度：支援到小數點後2位</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="protection-zone-status" style="margin-top: 20px;">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="label">保護範圍狀態</div>
+                            <div class="value" id="protectionZoneStatusText">關閉</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">有效物件數</div>
+                            <div class="value" id="validObjectCount">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">過濾物件數</div>
+                            <div class="value" id="filteredObjectCount">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">過濾效率</div>
+                            <div class="value" id="filterEfficiency">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 運動控制握手面板 -->
+        <div class="panel handshake-panel">
+            <h2>
+                <span class="status-indicator" id="handshakeStatus"></span>
+                運動控制握手控制 <span class="version-badge">v4.1</span>
+                <span class="world-coord-indicator" id="worldCoordIndicator">
+                    世界座標: 未啟用
+                </span>
+            </h2>
+            
+            <div class="state-machine">
+                <h3>系統狀態機 (狀態寄存器: <span id="statusRegisterValue">0</span>)</h3>
+                <div class="state-bits">
+                    <div class="state-bit" id="readyBit">
+                        <div style="font-weight: bold; margin-bottom: 8px;">Ready</div>
+                        <div style="font-size: 12px; color: #666;">bit0</div>
+                        <div id="readyStatus" style="margin-top: 8px; font-size: 14px;">0</div>
+                    </div>
+                    <div class="state-bit" id="runningBit">
+                        <div style="font-weight: bold; margin-bottom: 8px;">Running</div>
+                        <div style="font-size: 12px; color: #666;">bit1</div>
+                        <div id="runningStatus" style="margin-top: 8px; font-size: 14px;">0</div>
+                    </div>
+                    <div class="state-bit" id="alarmBit">
+                        <div style="font-weight: bold; margin-bottom: 8px;">Alarm</div>
+                        <div style="font-size: 12px; color: #666;">bit2</div>
+                        <div id="alarmStatus" style="margin-top: 8px; font-size: 14px;">0</div>
+                    </div>
+                    <div class="state-bit" id="initializedBit">
+                        <div style="font-weight: bold; margin-bottom: 8px;">Initialized</div>
+                        <div style="font-size: 12px; color: #666;">bit3</div>
+                        <div id="initializedStatus" style="margin-top: 8px; font-size: 14px;">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="handshake-controls">
+                <div>
+                    <h4>Modbus TCP 連接</h4>
+                    <div class="input-group">
+                        <div class="form-group" style="flex: 2; margin: 0;">
+                            <label>PLC/HMI 服務器 IP</label>
+                            <input type="text" id="modbusServerIP" value="127.0.0.1" placeholder="192.168.1.100">
+                        </div>
+                        <div class="form-group" style="flex: 1; margin: 0;">
+                            <label>端口</label>
+                            <input type="number" id="modbusServerPort" value="502" min="1" max="65535">
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button class="btn btn-secondary" onclick="setModbusServer()">設置服務器</button>
+                        <button class="btn btn-success" onclick="connectModbus()" id="connectBtn">連接</button>
+                        <button class="btn btn-danger" onclick="disconnectModbus()" id="disconnectBtn" disabled>斷開</button>
+                    </div>
+                </div>
+
+                <div>
+                    <h4>相機控制</h4>
+                    <div class="form-group">
+                        <label>相機 IP 地址</label>
+                        <div class="input-group">
+                            <input type="text" id="cameraIP" value="192.168.1.8" placeholder="192.168.1.8">
+                            <button class="btn btn-primary" onclick="initializeCamera()">連接相機</button>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button class="btn btn-primary" onclick="captureImage()">拍照</button>
+                        <button class="btn btn-success" onclick="captureAndDetect()">拍照+檢測</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="handshake-info">
+                <h4>運動控制握手邏輯說明 (v4.1)</h4>
+                <ol>
+                    <li><strong>系統初始化完成</strong> → Ready=1，準備接受控制指令</li>
+                    <li><strong>PLC下達控制指令</strong> → 系統檢查Ready=1才執行</li>
+                    <li><strong>開始執行操作</strong> → Ready=0, Running=1</li>
+                    <li><strong>操作執行完成</strong> → Running=0</li>
+                    <li><strong>PLC清零控制指令</strong> → Ready=1，準備下次操作</li>
+                    <li><strong>異常發生時</strong> → Alarm=1, Initialized=0</li>
+                    <li><strong>v4.0: 世界座標轉換</strong> → 需要有效的內外參數據才能啟用</li>
+                    <li><strong>v4.1: 保護範圍過濾</strong> → 僅有效範圍內物件會被識別</li>
+                </ol>
+            </div>
+
+            <div style="text-align: center; margin: 20px 0;">
+                <h4>手動控制指令 (模擬PLC操作)</h4>
+                <div class="command-buttons">
+                    <button class="btn btn-secondary" onclick="sendManualCommand(0)">清空控制 (0)</button>
+                    <button class="btn btn-primary" onclick="sendManualCommand(8)">拍照 (8)</button>
+                    <button class="btn btn-success" onclick="sendManualCommand(16)">拍照+檢測+保護範圍 (16)</button>
+                    <button class="btn btn-warning" onclick="sendManualCommand(32)">重新初始化 (32)</button>
+                </div>
+                <div style="margin-top: 15px;">
+                    <button class="btn btn-secondary" onclick="refreshStatus()">刷新狀態</button>
+                    <button class="btn btn-secondary" onclick="refreshRegisters()">刷新寄存器</button>
+                    <button class="btn btn-secondary" onclick="debugModbus()">調試信息</button>
+                    <button class="btn btn-secondary" onclick="testModbus()">測試連接</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- 系統狀態面板 -->
+            <div class="panel">
+                <h2>
+                    <span class="status-indicator" id="systemStatus"></span>
+                    系統狀態 <span class="version-badge">v4.1</span>
+                </h2>
+                
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="label">Modbus連接</div>
+                        <div class="value" id="modbusConnection">未連接</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">相機狀態</div>
+                        <div class="value" id="cameraStatus">未連接</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">世界座標</div>
+                        <div class="value" id="worldCoordStatus">未啟用</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">保護範圍</div>
+                        <div class="value" id="protectionZoneState">關閉</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">控制指令</div>
+                        <div class="value" id="controlCommand">0</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">操作計數</div>
+                        <div class="value" id="operationCount">0</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">錯誤計數</div>
+                        <div class="value" id="errorCount">0</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">最後操作</div>
+                        <div class="value" id="lastOperation">無</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 檢測參數面板 -->
+            <div class="panel">
+                <h2>檢測參數設定</h2>
+                
+                <div class="form-group">
+                    <label>最小面積</label>
+                    <input type="number" id="minArea" value="50000" min="1000" step="1000">
+                </div>
+
+                <div class="form-group">
+                    <label>最小圓度</label>
+                    <input type="number" id="minRoundness" value="0.8" min="0.1" max="1.0" step="0.1">
+                </div>
+
+                <div class="form-group">
+                    <label>高斯核大小</label>
+                    <input type="number" id="gaussianKernel" value="9" min="3" max="21" step="2">
+                </div>
+
+                <div class="input-group">
+                    <div class="form-group" style="margin: 0;">
+                        <label>Canny 低閾值</label>
+                        <input type="number" id="cannyLow" value="20" min="1" max="255">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label>Canny 高閾值</label>
+                        <input type="number" id="cannyHigh" value="60" min="1" max="255">
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="updateParams()">更新參數</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 檢測結果面板 -->
+        <div class="panel results-panel">
+            <h2>檢測結果 
+                <span class="world-coord-indicator" id="resultWorldCoordIndicator">
+                    世界座標: 未啟用
+                </span>
+            </h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr 500px; gap: 20px;">
+                <div>
+                    <div class="image-container">
+                        <div id="imagePreview">
+                            <p style="color: #718096;">尚未拍攝圖像</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="label">檢測圓形數量</div>
+                            <div class="value" id="circleCount">0</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">拍照耗時</div>
+                            <div class="value" id="captureTime">0 ms</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">處理耗時</div>
+                            <div class="value" id="processTime">0 ms</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">總耗時</div>
+                            <div class="value" id="totalTime">0 ms</div>
+                        </div>
+                    </div>
+
+                    <div class="results-container" id="circleResults">
+                        <p style="color: #718096; text-align: center;">尚未進行檢測</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modbus 寄存器監控面板 -->
+        <div class="panel results-panel">
+            <h2>Modbus 寄存器監控 (v4.1: 運動控制握手 + 世界座標 + 保護範圍)</h2>
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+                <span style="font-size: 14px; color: #666;">
+                    自動更新間隔: 3秒 | 最後更新: <span id="registersUpdateTime">--</span> | 版本: v4.1
+                </span>
+            </div>
+            
+            <div class="registers-grid" id="registersGrid">
+                <!-- 寄存器數據將在這裡動態顯示 -->
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // WebSocket 連接
+        const socket = io();
+        let modbusConnected = false;
+        let cameraConnected = false;
+        let registersUpdateInterval = null;
+        let calibrationValid = false;
+        let worldCoordEnabled = false;
+        let protectionZoneEnabled = false;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshStatus();
+            refreshCalibrationStatus();
+            setInterval(refreshStatus, 3000);
+            startRegistersAutoUpdate();
+            console.log('CCD1 視覺檢測系統 v4.1 已啟動');
+            
+            // v4.1: 載入保護範圍狀態 (延遲執行避免與其他初始化衝突)
+            setTimeout(() => {
+                refreshProtectionZone();
+            }, 1500);
+            
+            // 初始化保護範圍checkbox狀態
+            updateProtectionZoneCheckboxState();
+        });
+
+        // 新增: 根據世界座標狀態更新保護範圍checkbox可用性
+        function updateProtectionZoneCheckboxState() {
+            const checkbox = document.getElementById('protectionZoneEnable');
+            if (worldCoordEnabled) {
+                checkbox.disabled = false;
+                checkbox.parentElement.querySelector('small').style.color = '#666';
+                checkbox.parentElement.querySelector('small').textContent = '(世界座標已啟用)';
+            } else {
+                checkbox.disabled = true;
+                checkbox.checked = false;
+                protectionZoneEnabled = false;
+                checkbox.parentElement.querySelector('small').style.color = '#f56565';
+                checkbox.parentElement.querySelector('small').textContent = '(需要世界座標功能)';
+                
+                // 同時更新UI狀態
+                const coordinateSettings = document.getElementById('coordinateSettings');
+                const inputs = coordinateSettings.querySelectorAll('input');
+                const applyBtn = document.getElementById('applyZoneBtn');
+                
+                coordinateSettings.classList.remove('enabled');
+                coordinateSettings.style.opacity = '0.5';
+                inputs.forEach(input => input.disabled = true);
+                applyBtn.disabled = true;
+            }
+        }
+
+        // Socket 事件處理
+        socket.on('connect', function() {
+            console.log('WebSocket 已連接');
+            refreshStatus();
+            refreshCalibrationStatus();
+        });
+
+        socket.on('status_update', function(data) {
+            updateStatus(data);
+        });
+
+        socket.on('image_update', function(data) {
+            if (data.image) {
+                document.getElementById('imagePreview').innerHTML = 
+                    `<img src="${data.image}" alt="拍攝圖像">`;
+            }
+            showToast(data.message, data.success);
+        });
+
+        socket.on('detection_result', function(data) {
+            updateDetectionResults(data);
+            if (data.image) {
+                document.getElementById('imagePreview').innerHTML = 
+                    `<img src="${data.image}" alt="檢測結果">`;
+            }
+        });
+
+        // ===== 標定相關函數 (v4.0) =====
+        function scanCalibrationFiles() {
+            fetch('/api/calibration/scan')
+            .then(response => response.json())
+            .then(data => {
+                console.log('v4.1 掃描結果:', data);
+                updateCalibrationDisplay(data);
+                
+                // 更新工作目錄顯示
+                document.getElementById('workingDirInfo').textContent = data.working_dir || '';
+                
+                // 檢查是否可以啟用載入按鈕
+                const canLoad = data.success && data.total_intrinsic_pairs > 0 && data.total_extrinsic_files > 0;
+                document.getElementById('loadCalibBtn').disabled = !canLoad;
+                
+                let message = '';
+                if (data.success) {
+                    message = `掃描完成: 找到${data.total_intrinsic_pairs}組內參檔案, ${data.total_extrinsic_files}個外參檔案`;
+                    if (canLoad) {
+                        message += ' - 可以進行導入';
+                    } else {
+                        message += ' - 請確認檔案完整性';
+                    }
+                } else {
+                    message = data.error || '掃描失敗';
+                }
+                
+                showToast(message, data.success);
+            })
+            .catch(error => {
+                showToast('掃描標定檔案失敗', false);
+                console.error('Error:', error);
+            });
+        }
+
+        function loadCalibrationData() {
+            const btn = document.getElementById('loadCalibBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 載入中...';
+
+            fetch('/api/calibration/load', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.success ? 
+                    '標定數據載入成功，世界座標轉換已啟用' : 
+                    (data.error || '載入失敗'), 
+                    data.success);
+                
+                if (data.success && data.loaded) {
+                    calibrationValid = true;
+                    refreshCalibrationStatus();
+                    refreshStatus();
+                    updateWorldCoordIndicators(true);
+                    
+                    // 顯示載入的檔案信息
+                    if (data.files) {
+                        console.log('已載入檔案:', data.files);
+                    }
+                } else {
+                    calibrationValid = false;
+                    updateWorldCoordIndicators(false);
+                }
+            })
+            .catch(error => {
+                showToast('載入標定數據失敗', false);
+                console.error('Error:', error);
+                calibrationValid = false;
+                updateWorldCoordIndicators(false);
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = '確認導入';
+            });
+        }
+
+        function refreshCalibrationStatus() {
+            fetch('/api/calibration/status')
+            .then(response => response.json())
+            .then(data => {
+                updateCalibrationStatusDisplay(data);
+                calibrationValid = data.calibration_loaded && data.transformer_ready;
+                updateWorldCoordIndicators(calibrationValid);
+            })
+            .catch(error => {
+                console.error('刷新標定狀態失敗:', error);
+            });
+        }
+
+        function updateCalibrationDisplay(scanData) {
+            // 更新內參狀態
+            const intrinsicStatus = document.getElementById('intrinsicStatus');
+            const intrinsicInfo = document.getElementById('intrinsicInfo');
+            
+            if (scanData.success && scanData.total_intrinsic_pairs > 0) {
+                intrinsicStatus.className = 'calibration-item valid';
+                intrinsicInfo.innerHTML = `找到 ${scanData.total_intrinsic_pairs} 組內參檔案`;
+                
+                // 顯示檔案列表
+                if (scanData.intrinsic_pairs && scanData.intrinsic_pairs.length > 0) {
+                    const latestPair = scanData.intrinsic_pairs[0];
+                    intrinsicInfo.innerHTML += `<br>最新: ${latestPair.timestamp}`;
+                }
+            } else {
+                intrinsicStatus.className = 'calibration-item invalid';
+                intrinsicInfo.innerHTML = '未找到內參檔案<br>需要: camera_matrix_*.npy, dist_coeffs_*.npy';
+            }
+
+            // 更新外參狀態
+            const extrinsicStatus = document.getElementById('extrinsicStatus');
+            const extrinsicInfo = document.getElementById('extrinsicInfo');
+            
+            if (scanData.success && scanData.total_extrinsic_files > 0) {
+                extrinsicStatus.className = 'calibration-item valid';
+                extrinsicInfo.innerHTML = `找到 ${scanData.total_extrinsic_files} 個外參檔案`;
+                
+                // 顯示檔案列表
+                if (scanData.extrinsic_files && scanData.extrinsic_files.length > 0) {
+                    const fileNames = scanData.extrinsic_files.map(f => f.split('/').pop()).join(', ');
+                    extrinsicInfo.innerHTML += `<br>${fileNames}`;
+                }
+            } else {
+                extrinsicStatus.className = 'calibration-item invalid';
+                extrinsicInfo.innerHTML = '未找到外參檔案<br>需要: *extrinsic*.npy';
+            }
+        }
+
+        function updateCalibrationStatusDisplay(statusData) {
+            // 更新標定狀態指示器
+            const calibrationStatus = document.getElementById('calibrationStatus');
+            if (statusData.calibration_loaded && statusData.transformer_ready) {
+                calibrationStatus.className = 'status-indicator status-connected';
+            } else {
+                calibrationStatus.className = 'status-indicator status-disconnected';
+            }
+
+            // 更新轉換器狀態
+            const transformerStatus = document.getElementById('transformerStatus');
+            const transformerInfo = document.getElementById('transformerInfo');
+            
+            if (statusData.transformer_ready) {
+                transformerStatus.className = 'calibration-item valid';
+                transformerInfo.innerHTML = `轉換器已啟用<br>載入時間: ${statusData.loaded_time || ''}`;
+            } else {
+                transformerStatus.className = 'calibration-item invalid';
+                transformerInfo.innerHTML = '轉換器未啟用<br>請先載入有效的內外參數據';
+            }
+
+            // 更新檔案資訊
+            if (statusData.calibration_loaded && statusData.files) {
+                document.getElementById('intrinsicInfo').innerHTML = 
+                    `已載入: ${statusData.files.camera_matrix || '未知'}<br>畸變係數: ${statusData.files.dist_coeffs || '未知'}`;
+                document.getElementById('extrinsicInfo').innerHTML = 
+                    `已載入: ${statusData.files.extrinsic || '未知'}`;
+            }
+
+            // 更新工作目錄
+            document.getElementById('workingDirInfo').textContent = statusData.working_dir || '';
+        }
+
+        function updateWorldCoordIndicators(enabled) {
+            worldCoordEnabled = enabled;
+            const indicators = document.querySelectorAll('.world-coord-indicator');
+            
+            indicators.forEach(indicator => {
+                if (enabled) {
+                    indicator.className = 'world-coord-indicator enabled';
+                    indicator.innerHTML = '世界座標: 已啟用';
+                } else {
+                    indicator.className = 'world-coord-indicator disabled';
+                    indicator.innerHTML = '世界座標: 未啟用';
+                }
+            });
+
+            // 更新系統狀態中的世界座標狀態
+            document.getElementById('worldCoordStatus').textContent = enabled ? '已啟用' : '未啟用';
+            
+            // v4.1: 同時更新保護範圍checkbox可用性
+            updateProtectionZoneCheckboxState();
+        }
+
+        // ===== 保護範圍相關函數 (v4.1) - 修正版本 =====
+        
+        // 更新保護範圍啟用狀態 (修正重複觸發問題)
+        function updateProtectionZoneEnable() {
+            const checkbox = document.getElementById('protectionZoneEnable');
+            protectionZoneEnabled = checkbox.checked;
+            
+            const coordinateSettings = document.getElementById('coordinateSettings');
+            const inputs = coordinateSettings.querySelectorAll('input');
+            const applyBtn = document.getElementById('applyZoneBtn');
+            
+            if (protectionZoneEnabled) {
+                coordinateSettings.classList.add('enabled');
+                coordinateSettings.style.opacity = '1';
+                inputs.forEach(input => input.disabled = false);
+                applyBtn.disabled = false;
+                
+                // 檢查世界座標是否啟用
+                if (!worldCoordEnabled) {
+                    showToast('警告：需要先載入世界座標標定數據才能使用保護範圍功能', false);
+                    // 自動取消勾選
+                    checkbox.checked = false;
+                    protectionZoneEnabled = false;
+                    coordinateSettings.classList.remove('enabled');
+                    coordinateSettings.style.opacity = '0.5';
+                    inputs.forEach(input => input.disabled = true);
+                    applyBtn.disabled = true;
+                    return; // 提前返回，不執行API調用
+                }
+            } else {
+                coordinateSettings.classList.remove('enabled');
+                coordinateSettings.style.opacity = '0.5';
+                inputs.forEach(input => input.disabled = true);
+                applyBtn.disabled = true;
+            }
+            
+            // 延遲執行，避免重複觸發
+            clearTimeout(window.protectionZoneTimeout);
+            window.protectionZoneTimeout = setTimeout(() => {
+                applyProtectionZone();
+            }, 300);
+        }
+
+        // 應用保護範圍設定 (增加錯誤處理和防重複調用)
+        function applyProtectionZone() {
+            // 防止重複調用
+            if (window.protectionZoneApplying) {
+                console.log('保護範圍設定正在處理中，跳過重複調用');
+                return;
+            }
+            
+            window.protectionZoneApplying = true;
+            
+            const enabled = document.getElementById('protectionZoneEnable').checked;
+            const xMin = parseFloat(document.getElementById('xMin').value);
+            const xMax = parseFloat(document.getElementById('xMax').value);
+            const yMin = parseFloat(document.getElementById('yMin').value);
+            const yMax = parseFloat(document.getElementById('yMax').value);
+            
+            // 驗證範圍設定
+            if (enabled) {
+                if (xMin >= xMax) {
+                    showToast('X軸最小值必須小於最大值', false);
+                    window.protectionZoneApplying = false;
+                    return;
+                }
+                if (yMin >= yMax) {
+                    showToast('Y軸最小值必須小於最大值', false);
+                    window.protectionZoneApplying = false;
+                    return;
+                }
+                
+                if (!worldCoordEnabled) {
+                    showToast('請先載入世界座標標定數據', false);
+                    // 自動取消勾選
+                    document.getElementById('protectionZoneEnable').checked = false;
+                    updateProtectionZoneEnable();
+                    window.protectionZoneApplying = false;
+                    return;
+                }
+            }
+            
+            const data = {
+                enabled: enabled,
+                x_min: xMin,
+                x_max: xMax,
+                y_min: yMin,
+                y_max: yMax
+            };
+            
+            // 檢查API是否存在
+            fetch('/api/protection_zone/set', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, true);
+                    updateProtectionZoneDisplay(data.config);
+                } else {
+                    showToast(data.message || '設置保護範圍失敗', false);
+                }
+            })
+            .catch(error => {
+                console.error('保護範圍API錯誤:', error);
+                if (error.message.includes('404')) {
+                    showToast('保護範圍功能尚未實現，請等待後端API完成', false);
+                } else if (error.message.includes('500')) {
+                    showToast('服務器內部錯誤，請檢查後端實現', false);
+                } else {
+                    showToast(`網路錯誤: ${error.message}`, false);
+                }
+            })
+            .finally(() => {
+                window.protectionZoneApplying = false;
+            });
+        }
+
+        function resetProtectionZone() {
+            document.getElementById('xMin').value = '-122';
+            document.getElementById('xMax').value = '-4';
+            document.getElementById('yMin').value = '243';
+            document.getElementById('yMax').value = '341';
+            
+            showToast('已重置為默認範圍值', true);
+        }
+
+        function refreshProtectionZone() {
+            fetch('/api/protection_zone/get')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateProtectionZoneDisplay(data.config);
+                    showToast('保護範圍狀態已刷新', true);
+                }
+            })
+            .catch(error => {
+                showToast('刷新保護範圍狀態失敗 - 可能後端API尚未實現', false);
+                console.error('Error:', error);
+            });
+        }
+
+        // 更新保護範圍顯示 (修正版本)
+        function updateProtectionZoneDisplay(config) {
+            // 更新checkbox狀態 (避免觸發事件)
+            const checkbox = document.getElementById('protectionZoneEnable');
+            checkbox.removeEventListener('change', updateProtectionZoneEnable);
+            checkbox.checked = config.enabled;
+            checkbox.addEventListener('change', updateProtectionZoneEnable);
+            
+            protectionZoneEnabled = config.enabled;
+            
+            // 更新數值
+            document.getElementById('xMin').value = config.x_min;
+            document.getElementById('xMax').value = config.x_max;
+            document.getElementById('yMin').value = config.y_min;
+            document.getElementById('yMax').value = config.y_max;
+            
+            // 更新UI狀態 (不觸發API調用)
+            const coordinateSettings = document.getElementById('coordinateSettings');
+            const inputs = coordinateSettings.querySelectorAll('input');
+            const applyBtn = document.getElementById('applyZoneBtn');
+            
+            if (config.enabled && worldCoordEnabled) {
+                coordinateSettings.classList.add('enabled');
+                coordinateSettings.style.opacity = '1';
+                inputs.forEach(input => input.disabled = false);
+                applyBtn.disabled = false;
+                checkbox.disabled = false;
+            } else {
+                coordinateSettings.classList.remove('enabled');
+                coordinateSettings.style.opacity = '0.5';
+                inputs.forEach(input => input.disabled = true);
+                applyBtn.disabled = true;
+                if (!worldCoordEnabled) {
+                    checkbox.disabled = true;
+                }
+            }
+            
+            // 更新狀態指示器
+            const statusIndicator = document.getElementById('protectionZoneStatus');
+            const statusText = document.getElementById('protectionZoneStatusText');
+            
+            if (config.enabled) {
+                statusIndicator.className = 'status-indicator status-connected';
+                statusText.textContent = '已啟用';
+                document.getElementById('protectionZoneState').textContent = '已啟用';
+            } else {
+                statusIndicator.className = 'status-indicator status-disconnected';
+                statusText.textContent = '關閉';
+                document.getElementById('protectionZoneState').textContent = '關閉';
+            }
+        }
+
+        function updateProtectionZoneStats(registers) {
+            const validCount = registers['303_有效範圍內物件數量'];
+            const filteredCount = registers['304_被過濾掉的物件數量'];
+            
+            if (validCount !== undefined) {
+                document.getElementById('validObjectCount').textContent = validCount;
+            }
+            
+            if (filteredCount !== undefined) {
+                document.getElementById('filteredObjectCount').textContent = filteredCount;
+            }
+            
+            // 計算過濾效率
+            if (validCount !== undefined && filteredCount !== undefined) {
+                const totalCount = validCount + filteredCount;
+                if (totalCount > 0) {
+                    const efficiency = ((filteredCount / totalCount) * 100).toFixed(1);
+                    document.getElementById('filterEfficiency').textContent = `${efficiency}%`;
+                } else {
+                    document.getElementById('filterEfficiency').textContent = '0%';
+                }
+            }
+        }
+
+        // 啟動寄存器自動更新
+        function startRegistersAutoUpdate() {
+            if (registersUpdateInterval) {
+                clearInterval(registersUpdateInterval);
+            }
+            
+            refreshRegisters();
+            registersUpdateInterval = setInterval(refreshRegisters, 3000);
+        }
+
+        // 停止寄存器自動更新
+        function stopRegistersAutoUpdate() {
+            if (registersUpdateInterval) {
+                clearInterval(registersUpdateInterval);
+                registersUpdateInterval = null;
+            }
+        }
+
+        // Modbus 服務器設置
+        function setModbusServer() {
+            const ip = document.getElementById('modbusServerIP').value;
+            const port = parseInt(document.getElementById('modbusServerPort').value);
+
+            if (!ip || !port) {
+                showToast('請輸入有效的 IP 地址和端口', false);
+                return;
+            }
+
+            fetch('/api/modbus/set_server', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip: ip, port: port })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.message, data.success);
+            })
+            .catch(error => {
+                showToast('設置服務器地址失敗', false);
+                console.error('Error:', error);
+            });
+        }
+
+        // 連接 Modbus
+        function connectModbus() {
+            const btn = document.getElementById('connectBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 連接中...';
+
+            fetch('/api/modbus/connect', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.message, data.success);
+                modbusConnected = data.success;
+                updateModbusButtons();
+                if (data.success) {
+                    startRegistersAutoUpdate();
+                    console.log('Modbus v4.1 握手模式已啟動');
+                }
+            })
+            .catch(error => {
+                showToast('連接失敗', false);
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = '連接';
+            });
+        }
+
+        // 斷開 Modbus
+        function disconnectModbus() {
+            fetch('/api/modbus/disconnect', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.message, data.success);
+                modbusConnected = false;
+                updateModbusButtons();
+                stopRegistersAutoUpdate();
+                document.getElementById('registersGrid').innerHTML = '';
+            })
+            .catch(error => {
+                showToast('斷開失敗', false);
+                console.error('Error:', error);
+            });
+        }
+
+        // 更新 Modbus 按鈕狀態
+        function updateModbusButtons() {
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            
+            connectBtn.disabled = modbusConnected;
+            disconnectBtn.disabled = !modbusConnected;
+            
+            const handshakeStatus = document.getElementById('handshakeStatus');
+            if (modbusConnected) {
+                handshakeStatus.className = 'status-indicator status-connected';
+                document.getElementById('modbusConnection').textContent = '已連接';
+            } else {
+                handshakeStatus.className = 'status-indicator status-disconnected';
+                document.getElementById('modbusConnection').textContent = '未連接';
+            }
+        }
+
+        // 發送手動控制指令
+        function sendManualCommand(command) {
+            if (!modbusConnected) {
+                showToast('請先連接到 Modbus 服務器', false);
+                return;
+            }
+
+            const commandNames = {
+                0: "清空控制",
+                8: "拍照",
+                16: "拍照+檢測 (含世界座標+保護範圍)",
+                32: "重新初始化"
+            };
+
+            fetch('/api/modbus/manual_command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: command })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.message, data.success);
+                if (data.success) {
+                    setTimeout(() => {
+                        refreshStatus();
+                        refreshRegisters();
+                    }, 500);
+                }
+            })
+            .catch(error => {
+                showToast(`發送控制指令失敗`, false);
+                console.error('Error:', error);
+            });
+        }
+
+        // 測試 Modbus 連接
+        function testModbus() {
+            fetch('/api/modbus/test')
+            .then(response => response.json())
+            .then(data => {
+                const message = data.message + (data.error ? ` (${data.error})` : '');
+                showToast(message, data.success);
+                console.log('Modbus v4.1 測試結果:', data);
+            })
+            .catch(error => {
+                showToast('測試失敗', false);
+                console.error('Error:', error);
+            });
+        }
+
+        // 調試Modbus
+        function debugModbus() {
+            fetch('/api/modbus/debug')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('v4.1 運動控制握手調試信息:', data.debug_info);
+                    
+                    let debugText = 'v4.1 運動控制握手調試信息:\n\n';
+                    debugText += `版本: ${data.debug_info.version || 'v4.1'}\n`;
+                    debugText += `世界座標支援: ${data.debug_info.world_coord_support}\n`;
+                    debugText += `保護範圍支援: ${data.debug_info.protection_zone_support || '已支援'}\n`;
+                    debugText += `連接狀態: ${data.debug_info.connected}\n`;
+                    debugText += `同步運行: ${data.debug_info.sync_running}\n`;
+                    debugText += `同步線程: ${data.debug_info.sync_thread_alive}\n`;
+                    debugText += `控制指令: ${data.debug_info.last_control_command}\n`;
+                    debugText += `指令處理中: ${data.debug_info.command_processing}\n`;
+                    debugText += `操作計數: ${data.debug_info.operation_count}\n`;
+                    debugText += `錯誤計數: ${data.debug_info.error_count}\n`;
+                    debugText += `輪詢間隔: ${data.debug_info.sync_interval_ms}ms\n`;
+                    debugText += `寄存器總數: ${data.debug_info.register_count}\n\n`;
+                    
+                    if (data.debug_info.state_machine) {
+                        debugText += '狀態機:\n';
+                        Object.entries(data.debug_info.state_machine).forEach(([key, value]) => {
+                            debugText += `  ${key}: ${value}\n`;
+                        });
+                    }
+                    
+                    if (data.debug_info.current_registers) {
+                        debugText += '\n當前寄存器:\n';
+                        Object.entries(data.debug_info.current_registers).forEach(([key, value]) => {
+                            debugText += `  ${key}: ${value}\n`;
+                        });
+                    }
+                    
+                    alert(debugText);
+                    showToast('v4.1 調試信息已顯示 (請查看控制台和彈窗)', true);
+                } else {
+                    showToast(data.message, false);
+                }
+            })
+            .catch(error => {
+                showToast('獲取調試信息失敗', false);
+                console.error('Error:', error);
+            });
+        }
+
+        // 刷新寄存器
+        function refreshRegisters() {
+            if (!modbusConnected) {
+                return;
+            }
+
+            fetch('/api/modbus/registers')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateRegistersDisplay(data.registers);
+                    document.getElementById('registersUpdateTime').textContent = data.timestamp;
+                    
+                    if (data.state_machine) {
+                        updateStateMachineDisplay(data.state_machine);
+                    }
+                } else {
+                    console.warn('刷新寄存器失敗:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('刷新寄存器網路錯誤:', error);
+            });
+        }
+
+        // 更新狀態機顯示
+        function updateStateMachineDisplay(stateMachine) {
+            document.getElementById('statusRegisterValue').textContent = stateMachine.status_register;
+            
+            updateStateBit('readyBit', 'readyStatus', stateMachine.ready);
+            updateStateBit('runningBit', 'runningStatus', stateMachine.running);
+            updateStateBit('alarmBit', 'alarmStatus', stateMachine.alarm);
+            updateStateBit('initializedBit', 'initializedStatus', stateMachine.initialized);
+        }
+
+        // 更新單個狀態位顯示
+        function updateStateBit(bitId, statusId, isActive) {
+            const bitElement = document.getElementById(bitId);
+            const statusElement = document.getElementById(statusId);
+            
+            statusElement.textContent = isActive ? '1' : '0';
+            
+            bitElement.classList.remove('active', 'alarm', 'running');
+            
+            if (bitId === 'alarmBit' && isActive) {
+                bitElement.classList.add('alarm');
+            } else if (bitId === 'runningBit' && isActive) {
+                bitElement.classList.add('running');
+            } else if (isActive) {
+                bitElement.classList.add('active');
+            }
+        }
+
+        // 更新寄存器顯示（v4.1 擴展保護範圍）
+        function updateRegistersDisplay(registers) {
+            const grid = document.getElementById('registersGrid');
+            
+            // v4.1 寄存器分組
+            const groups = {
+                '核心握手寄存器 (200-201)': {},
+                '狀態位解析': {},
+                '檢測結果-像素座標 (240-255)': {},
+                '檢測結果-世界座標 (256-276) [v4.0]': {},
+                '保護範圍配置 (294-305) [v4.1新增]': {},
+                '統計資訊 (280-299)': {}
+            };
+
+            Object.entries(registers).forEach(([key, value]) => {
+                const addr = parseInt(key.split('_')[0]);
+                if (addr >= 200 && addr <= 201) {
+                    groups['核心握手寄存器 (200-201)'][key] = value;
+                } else if (key.includes('bit')) {
+                    groups['狀態位解析'][key] = value;
+                } else if (addr >= 240 && addr <= 255) {
+                    groups['檢測結果-像素座標 (240-255)'][key] = value;
+                } else if ((addr >= 256 && addr <= 276) || key.includes('世界座標') || key.includes('世界X') || key.includes('世界Y') || key.includes('計算值')) {
+                    groups['檢測結果-世界座標 (256-276) [v4.0]'][key] = value;
+                } else if (addr >= 294 && addr <= 305) {
+                    groups['保護範圍配置 (294-305) [v4.1新增]'][key] = value;
+                } else if (addr >= 280 && addr <= 299) {
+                    groups['統計資訊 (280-299)'][key] = value;
+                }
+            });
+
+            grid.innerHTML = '';
+            Object.entries(groups).forEach(([groupName, groupRegisters]) => {
+                if (Object.keys(groupRegisters).length > 0) {
+                    const groupDiv = document.createElement('div');
+                    groupDiv.className = 'register-group';
+                    
+                    let html = `<h4>${groupName}</h4>`;
+                    Object.entries(groupRegisters).forEach(([key, value]) => {
+                        const displayName = key.substring(key.indexOf('_') + 1);
+                        const isHighlighted = shouldHighlightRegister(key, value);
+                        const valueClass = isHighlighted ? 'register-value highlight' : 'register-value';
+                        
+                        // 特殊格式化
+                        let displayValue = value;
+                        if (key.includes('計算值_mm')) {
+                            displayValue = `${value} mm`;
+                        } else if (key.includes('保護範圍啟用')) {
+                            displayValue = value === 1 ? '啟用' : '關閉';
+                        }
+                        
+                        html += `
+                            <div class="register-item">
+                                <span class="register-name">${displayName}</span>
+                                <span class="${valueClass}">${displayValue}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    groupDiv.innerHTML = html;
+                    grid.appendChild(groupDiv);
+                }
+            });
+
+            updateKeyInfoFromRegisters(registers);
+            
+            // v4.1: 更新保護範圍統計
+            updateProtectionZoneStats(registers);
+        }
+
+        // 從寄存器更新關鍵信息
+        function updateKeyInfoFromRegisters(registers) {
+            const controlCommand = registers['200_控制指令'];
+            const opCount = registers['283_操作計數器'];
+            const errCount = registers['284_錯誤計數器'];
+            const worldCoordValid = registers['256_世界座標有效標誌'];
+            
+            if (controlCommand !== undefined) {
+                const commandNames = { 0: "無", 8: "拍照", 16: "拍照+檢測", 32: "初始化" };
+                document.getElementById('controlCommand').textContent = 
+                    `${controlCommand} (${commandNames[controlCommand] || "未知"})`;
+            }
+            if (opCount !== undefined) {
+                document.getElementById('operationCount').textContent = opCount;
+            }
+            if (errCount !== undefined) {
+                document.getElementById('errorCount').textContent = errCount;
+            }
+            
+            // 更新世界座標狀態
+            if (worldCoordValid !== undefined) {
+                updateWorldCoordIndicators(worldCoordValid === 1);
+            }
+        }
+
+        // 判斷是否需要高亮顯示某個寄存器
+        function shouldHighlightRegister(key, value) {
+            if (key.includes('控制指令')) {
+                return value > 0;
+            }
+            
+            if (key.includes('bit') && value > 0) {
+                return true;
+            }
+            
+            if (key.includes('檢測圓形數量')) {
+                return value > 0;
+            }
+            
+            if ((key.includes('X像素') || key.includes('Y像素') || 
+                 key.includes('世界X') || key.includes('世界Y') || 
+                 key.includes('計算值')) && value != 0) {
+                return true;
+            }
+            
+            if (key.includes('世界座標有效標誌') || key.includes('保護範圍啟用')) {
+                return value > 0;
+            }
+            
+            return false;
+        }
+
+        // 初始化相機
+        function initializeCamera() {
+            const ip = document.getElementById('cameraIP').value;
+            
+            fetch('/api/initialize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip_address: ip })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.message, data.success);
+                cameraConnected = data.success;
+                refreshStatus();
+            })
+            .catch(error => {
+                showToast('初始化相機失敗', false);
+                console.error('Error:', error);
+            });
+        }
+
+        // 拍照
+        function captureImage() {
+            fetch('/api/capture', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.image) {
+                    document.getElementById('imagePreview').innerHTML = 
+                        `<img src="${data.image}" alt="拍攝圖像">`;
+                    document.getElementById('captureTime').textContent = 
+                        `${data.capture_time_ms} ms`;
+                    document.getElementById('lastOperation').textContent = '拍照';
+                }
+                showToast(data.message, data.success);
+            })
+            .catch(error => {
+                showToast('拍照失敗', false);
+                console.error('Error:', error);
+            });
+        }
+
+        // 拍照+檢測（v4.1 包含世界座標+保護範圍）
+        function captureAndDetect() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 檢測中...';
+
+            fetch('/api/capture_and_detect', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                updateDetectionResults(data);
+                if (data.image) {
+                    document.getElementById('imagePreview').innerHTML = 
+                        `<img src="${data.image}" alt="檢測結果">`;
+                }
+                
+                let operationText = '';
+                if (data.success) {
+                    operationText = `檢測完成 - ${data.circle_count}個圓形`;
+                    if (data.has_world_coords) {
+                        operationText += ' (含世界座標)';
+                    } else {
+                        operationText += ' (僅像素座標)';
+                    }
+                    if (protectionZoneEnabled) {
+                        operationText += ' [保護範圍已啟用]';
+                    }
+                } else {
+                    operationText = '檢測失敗';
+                }
+                document.getElementById('lastOperation').textContent = operationText;
+            })
+            .catch(error => {
+                showToast('檢測失敗', false);
+                console.error('Error:', error);
+                document.getElementById('lastOperation').textContent = '檢測失敗';
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = '拍照+檢測';
+            });
+        }
+
+        // 更新參數
+        function updateParams() {
+            const params = {
+                min_area: parseFloat(document.getElementById('minArea').value),
+                min_roundness: parseFloat(document.getElementById('minRoundness').value),
+                gaussian_kernel: parseInt(document.getElementById('gaussianKernel').value),
+                canny_low: parseInt(document.getElementById('cannyLow').value),
+                canny_high: parseInt(document.getElementById('cannyHigh').value)
+            };
+
+            fetch('/api/update_params', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(params)
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.message, data.success);
+            })
+            .catch(error => {
+                showToast('更新參數失敗', false);
+                console.error('Error:', error);
+            });
+        }
+
+        // 刷新狀態
+        function refreshStatus() {
+            fetch('/api/status')
+            .then(response => response.json())
+            .then(data => {
+                updateStatus(data);
+            })
+            .catch(error => {
+                console.error('獲取狀態失敗:', error);
+            });
+        }
+
+        // 更新狀態顯示（v4.1 包含保護範圍狀態）
+        function updateStatus(data) {
+            // 更新相機狀態
+            const systemStatus = document.getElementById('systemStatus');
+            
+            if (data.connected) {
+                systemStatus.className = 'status-indicator status-connected';
+                document.getElementById('cameraStatus').textContent = '已連接';
+                cameraConnected = true;
+            } else {
+                systemStatus.className = 'status-indicator status-disconnected';
+                document.getElementById('cameraStatus').textContent = '未連接';
+                cameraConnected = false;
+            }
+
+            // 更新 Modbus 狀態
+            if (data.modbus_connection) {
+                modbusConnected = data.modbus_connection.connected;
+                updateModbusButtons();
+                
+                // 更新狀態機信息
+                if (data.modbus_connection.state_machine) {
+                    updateStateMachineDisplay(data.modbus_connection.state_machine);
+                }
+                
+                // 更新計數器
+                if (data.modbus_connection.operation_count !== undefined) {
+                    document.getElementById('operationCount').textContent = 
+                        data.modbus_connection.operation_count;
+                }
+                
+                if (data.modbus_connection.error_count !== undefined) {
+                    document.getElementById('errorCount').textContent = 
+                        data.modbus_connection.error_count;
+                }
+
+                // 更新控制指令
+                if (data.modbus_connection.last_control_command !== undefined) {
+                    const commandNames = { 0: "無", 8: "拍照", 16: "拍照+檢測", 32: "初始化" };
+                    const cmd = data.modbus_connection.last_control_command;
+                    document.getElementById('controlCommand').textContent = 
+                        `${cmd} (${commandNames[cmd] || "未知"})`;
+                }
+            }
+
+            // v4.0: 更新標定狀態
+            if (data.calibration_status) {
+                updateCalibrationStatusDisplay(data.calibration_status);
+                const isValid = data.calibration_status.calibration_loaded && data.calibration_status.transformer_ready;
+                updateWorldCoordIndicators(isValid);
+            }
+
+            // v4.1: 更新保護範圍狀態
+            if (data.protection_zone) {
+                updateProtectionZoneDisplay(data.protection_zone);
+            }
+
+            // 更新檢測參數
+            if (data.detection_params) {
+                document.getElementById('minArea').value = data.detection_params.min_area;
+                document.getElementById('minRoundness').value = data.detection_params.min_roundness;
+                document.getElementById('gaussianKernel').value = data.detection_params.gaussian_kernel_size;
+                document.getElementById('cannyLow').value = data.detection_params.canny_low;
+                document.getElementById('cannyHigh').value = data.detection_params.canny_high;
+            }
+
+            // 更新最後結果
+            if (data.last_result) {
+                updateDetectionResults(data.last_result);
+            }
+
+            // v4.1: 檢查版本信息
+            if (data.version) {
+                console.log(`系統版本: ${data.version}`);
+            }
+        }
+
+        // 更新檢測結果（v4.1 包含保護範圍顯示）
+        function updateDetectionResults(data) {
+            document.getElementById('circleCount').textContent = data.circle_count || 0;
+            document.getElementById('captureTime').textContent = `${data.capture_time_ms || 0} ms`;
+            document.getElementById('processTime').textContent = `${data.processing_time_ms || 0} ms`;
+            document.getElementById('totalTime').textContent = `${data.total_time_ms || 0} ms`;
+
+            const resultsContainer = document.getElementById('circleResults');
+            
+            if (data.circles && data.circles.length > 0) {
+                let html = '';
+                data.circles.forEach((circle, index) => {
+                    const hasWorldCoords = circle.world_coords && data.has_world_coords;
+                    const inProtectionZone = circle.in_protection_zone !== undefined ? circle.in_protection_zone : true;
+                    
+                    // 確定圓形項目的CSS類
+                    let circleItemClass = 'circle-item';
+                    if (hasWorldCoords && protectionZoneEnabled) {
+                        circleItemClass += inProtectionZone ? ' in-zone' : ' out-zone';
+                    }
+                    
+                    // 保護範圍狀態顯示
+                    let zoneStatusHtml = '';
+                    if (hasWorldCoords && protectionZoneEnabled) {
+                        if (inProtectionZone) {
+                            zoneStatusHtml = '<span class="zone-status valid">可夾取</span>';
+                        } else {
+                            zoneStatusHtml = '<span class="zone-status filtered">已過濾</span>';
+                        }
+                    }
+                    
+                    html += `
+                        <div class="${circleItemClass}">
+                            <strong>圓形 ${circle.id}</strong>
+                            ${zoneStatusHtml}
+                            <div style="margin: 8px 0;">
+                                半徑: ${circle.radius} px | 面積: ${Math.round(circle.area)} px² | 圓度: ${circle.roundness.toFixed(3)}
+                            </div>
+                            <div class="circle-coords">
+                                <div class="coord-group pixel-coord">
+                                    <div class="coord-label">像素座標</div>
+                                    <div class="coord-value">X: ${circle.center[0]} px<br>Y: ${circle.center[1]} px</div>
+                                </div>
+                                <div class="coord-group world-coord ${hasWorldCoords ? '' : 'disabled'}">
+                                    <div class="coord-label">世界座標 (Z=0平面)</div>
+                                    <div class="coord-value">
+                                        ${hasWorldCoords ? 
+                                            `X: ${circle.world_coords[0].toFixed(2)} mm<br>Y: ${circle.world_coords[1].toFixed(2)} mm` : 
+                                            '需要載入標定數據'
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                resultsContainer.innerHTML = html;
+            } else {
+                resultsContainer.innerHTML = 
+                    '<p style="color: #718096; text-align: center;">未檢測到圓形</p>';
+            }
+
+            // 更新結果面板的世界座標指示器
+            updateWorldCoordIndicators(data.has_world_coords || false);
+
+            if (data.success !== undefined) {
+                let message = '';
+                if (data.success) {
+                    message = `檢測完成，找到 ${data.circle_count} 個圓形`;
+                    if (data.has_world_coords) {
+                        message += ' (包含世界座標)';
+                        if (protectionZoneEnabled) {
+                            message += ' [保護範圍過濾已啟用]';
+                        }
+                    } else {
+                        message += ' (僅像素座標)';
+                    }
+                } else {
+                    message = data.error_message || '檢測失敗';
+                }
+                showToast(message, data.success);
+            }
+        }
+
+        // 顯示提示訊息
+        function showToast(message, isSuccess = true) {
+            const toast = document.getElementById('toast');
+            toast.innerHTML = message;
+            toast.className = `toast ${isSuccess ? '' : 'error'} show`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 4000);
+        }
+
+        // 頁面卸載時清理
+        window.addEventListener('beforeunload', () => {
+            stopRegistersAutoUpdate();
+        });
+
+        // v4.1: 初始化時自動掃描標定檔案
+        setTimeout(() => {
+            scanCalibrationFiles();
+        }, 1000);
+
+        // v4.1: 系統啟動日誌
+        console.log(`
+        CCD1 視覺檢測系統 v4.1 已啟動
+        保護範圍檢測過濾 (含錯誤處理優化)
+        世界座標轉換支援
+        運動控制握手模式已啟用
+        支援 NPY 內外參檔案管理
+        擴展寄存器映射 (256-276, 294-305)
+        修正重複觸發和依賴檢查問題
+        `);
+    </script>
+</body>
+</html>
