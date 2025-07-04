@@ -1,0 +1,42 @@
+{
+  "robot": {
+    "ip": "192.168.1.6",
+    "dashboard_port": 29999,
+    "move_port": 30003,
+    "default_speed": 50,
+    "default_acceleration": 50,
+    "enable_collision_detection": true,
+    "collision_level": 3
+  },
+  "modbus": {
+    "server_ip": "127.0.0.1",
+    "server_port": 502,
+    "robot_base_address": 400,
+    "timeout": 3.0
+  },
+  "gripper": {
+    "type": "PGC",
+    "enabled": true,
+    "base_address": 520,
+    "status_address": 500,
+    "default_force": 50,
+    "default_speed": 80
+  },
+  "vision": {
+    "ccd1_base_address": 200,
+    "ccd3_base_address": 800,
+    "detection_timeout": 10.0,
+    "ccd1_enabled": true,
+    "ccd3_enabled": false
+  },
+  "flows": {
+    "flow1_enabled": true,
+    "flow2_enabled": true,
+    "flow3_enabled": true
+  },
+  "safety": {
+    "enable_emergency_stop": true,
+    "max_error_count": 5,
+    "auto_recovery": false
+  }
+}
