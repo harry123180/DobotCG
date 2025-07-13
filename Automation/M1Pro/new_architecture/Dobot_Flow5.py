@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Dobot_Flow5.py - Flow5 機械臂運轉流程執行器 (CG版本 - 固定角度)
+Dobot_Flow5.py - Flow5 機械臂運轉流程執行器 (CG版本 - 固定角度 + 進度修正版)
 基於Flow3組裝作業流程，使用固定第四軸角度，無AngleHighLevel依賴
 參考Flow1/Flow2點位載入方式，禁止使用內建點位
+修正：統一將進度更新到寄存器1202而不是503
 """
 
 import time
@@ -34,7 +35,7 @@ class FlowResult:
 
 
 class Flow5AssemblyExecutor:
-    """Flow5: 機械臂運轉流程執行器 - CG版本使用固定角度"""
+    """Flow5: 機械臂運轉流程執行器 - CG版本使用固定角度 + 進度修正版"""
     
     # 硬編碼第四軸固定角度
     J4_FIXED_DEGREE = 176.96
@@ -67,6 +68,7 @@ class Flow5AssemblyExecutor:
             "standby",             # 待機位置 (起點)
             "rotate_top",          # 旋轉頂部點
             "rotate_down",         # 旋轉下方點
+            "rotate_down1",        # 旋轉下方點1
             "put_asm_pre",         # 組裝預備位置
             "put_asm_top",         # 組裝頂部位置
             "put_asm_down"         # 組裝放下位置
@@ -85,8 +87,9 @@ class Flow5AssemblyExecutor:
         if not self._load_external_points():
             raise RuntimeError("載入外部點位檔案失敗，Flow5無法初始化")
             
-        print("✓ Flow5執行器初始化完成 - 機械臂運轉流程 (固定角度版)")
+        print("✓ Flow5執行器初始化完成 - 機械臂運轉流程 (固定角度 + 進度修正版)")
         print(f"✓ 第四軸固定角度: {self.J4_FIXED_DEGREE}度")
+        print("✓ 進度將統一更新到寄存器1202")
         
     def _load_external_points(self) -> bool:
         """載入外部點位檔案 - 修正陣列格式JSON"""
@@ -174,47 +177,45 @@ class Flow5AssemblyExecutor:
             # 3. 移動到rotate_down (使用固定角度)
             {'type': 'move_to_point', 'params': {'point_name': 'rotate_down', 'move_type': 'J'}},
             
-            # 4. 夾爪撐開到235
+            # 4. 夾爪撐開到229
             {'type': 'gripper_smart_release', 'params': {'position': 229}},
+            
+            # 5. 夾爪快速關閉
             {'type': 'gripper_quick_close', 'params': {}},
+            
+            # 6. 移動到rotate_down1
             {'type': 'move_to_point', 'params': {'point_name': 'rotate_down1', 'move_type': 'J'}},
+            
+            # 7. 夾爪撐開到229
             {'type': 'gripper_smart_release', 'params': {'position': 229}},
-            # 5. 移動到rotate_top (使用固定角度)
+            
+            # 8. 移動到rotate_top (使用固定角度)
             {'type': 'move_to_point', 'params': {'point_name': 'rotate_top', 'move_type': 'J'}},
             
-            # 6. 移動到put_asm_pre
-            #{'type': 'move_to_point', 'params': {'point_name': 'put_asm_pre', 'move_type': 'J'}},
-            
-            # 7. 移動到put_asm_top
+            # 9. 移動到put_asm_top
             {'type': 'move_to_point', 'params': {'point_name': 'put_asm_top', 'move_type': 'J'}},
             
-            # 8. 移動到put_asm_down
+            # 10. 移動到put_asm_down
             {'type': 'move_to_point', 'params': {'point_name': 'put_asm_down', 'move_type': 'J'}},
             
-            # 9. 夾爪快速關閉
+            # 11. 夾爪快速關閉
             {'type': 'gripper_quick_close', 'params': {}},
-            
-            # 10. 移動到put_asm_top
             {'type': 'move_to_point', 'params': {'point_name': 'put_asm_top', 'move_type': 'J'}},
-            
-            # 11. 移動到put_asm_pre
-            #{'type': 'move_to_point', 'params': {'point_name': 'put_asm_pre', 'move_type': 'J'}},
-             # 2. 移動到rotate_top (使用固定角度)
             {'type': 'move_to_point', 'params': {'point_name': 'rotate_top', 'move_type': 'J'}},
-            
             # 12. 移動到standby (完成)
             {'type': 'move_to_point', 'params': {'point_name': 'standby', 'move_type': 'J'}}
         ]
         
         self.total_steps = len(self.motion_steps)
-        print(f"Flow5流程步驟建構完成，共{self.total_steps}步 (固定角度版)")
+        print(f"Flow5流程步驟建構完成，共{self.total_steps}步 (固定角度 + 進度修正版)")
     
     def execute(self) -> FlowResult:
-        """執行Flow5主邏輯"""
+        """執行Flow5主邏輯 - 進度修正版"""
         print("\n" + "="*60)
-        print("開始執行Flow5 - 機械臂運轉流程 (固定角度版)")
-        print("流程序列: standby->rotate_top->rotate_down->夾爪撐開->rotate_top->put_asm_pre->put_asm_top->put_asm_down->夾爪關閉->put_asm_top->put_asm_pre->standby")
+        print("開始執行Flow5 - 機械臂運轉流程 (固定角度 + 進度修正版)")
+        print("流程序列: standby->rotate_top->rotate_down->夾爪撐開->夾爪關閉->rotate_down1->夾爪撐開->rotate_top->put_asm_top->put_asm_down->夾爪關閉->standby")
         print(f"第四軸固定角度: {self.J4_FIXED_DEGREE}度")
+        print("進度統一更新到寄存器1202")
         print("="*60)
         
         self.status = FlowStatus.RUNNING
@@ -248,8 +249,6 @@ class Flow5AssemblyExecutor:
                 
                 if step['type'] == 'move_to_point':
                     success = self._execute_move_to_point(step['params'])
-                elif step['type'] == 'move_to_point_fixed_angle':
-                    success = self._execute_move_to_point_fixed_angle(step['params'])
                 elif step['type'] == 'gripper_quick_close':
                     success = self._execute_gripper_quick_close()
                 elif step['type'] == 'gripper_smart_release':
@@ -270,17 +269,15 @@ class Flow5AssemblyExecutor:
                 
                 self.current_step += 1
                 
-                # 更新進度
-                if self.state_machine:
-                    try:
-                        progress = int((self.current_step / self.total_steps) * 100)
-                        self.state_machine.set_progress(progress)
-                    except Exception:
-                        pass
+                # 🔥 修正：統一更新進度到寄存器1202
+                self._update_progress_to_1202()
             
             # 流程完成
             self.status = FlowStatus.COMPLETED
             execution_time = time.time() - self.start_time
+            
+            # 🔥 修正：最終進度設為100%
+            self._update_progress_to_1202(100)
             
             print(f"\n✓ Flow5執行完成！總耗時: {execution_time:.2f}秒")
             print(f"✓ 使用固定第四軸角度: {self.J4_FIXED_DEGREE}度")
@@ -305,6 +302,39 @@ class Flow5AssemblyExecutor:
                 steps_completed=self.current_step,
                 total_steps=self.total_steps
             )
+    
+    def _update_progress_to_1202(self, override_progress: Optional[int] = None):
+        """🔥 修正方法：統一更新進度到寄存器1202而不是503"""
+        try:
+            if override_progress is not None:
+                progress = override_progress
+            else:
+                progress = int((self.current_step / self.total_steps) * 100) if self.total_steps > 0 else 0
+            
+            # 方法1：通過state_machine的set_progress方法 (推薦)
+            if hasattr(self.state_machine, 'set_progress'):
+                self.state_machine.set_progress(progress)
+                print(f"[Flow5] 進度已更新到1202: {progress}% (透過MotionStateMachine)")
+                return
+            
+            # 方法2：直接寫入到1202寄存器 (備用方法)
+            if (self.state_machine and 
+                hasattr(self.state_machine, 'modbus_client') and 
+                self.state_machine.modbus_client is not None):
+                try:
+                    # 直接寫入運動進度寄存器1202
+                    result = self.state_machine.modbus_client.write_register(1202, progress)
+                    if hasattr(result, 'isError') and not result.isError():
+                        print(f"[Flow5] 進度已更新到1202: {progress}% (直接寫入)")
+                    else:
+                        print(f"[Flow5] 進度更新失敗: {result}")
+                except Exception as e:
+                    print(f"[Flow5] 進度更新異常: {e}")
+            else:
+                print(f"[Flow5] 無法更新進度：state_machine或modbus_client不可用")
+                
+        except Exception as e:
+            print(f"[Flow5] 進度更新到1202失敗: {e}")
     
     def _execute_move_to_point(self, params: Dict[str, Any]) -> bool:
         """執行移動到指定點位 - 使用原始角度"""
@@ -363,68 +393,6 @@ class Flow5AssemblyExecutor:
             
             if success:
                 print(f"  ✓ 移動到 {point_name} 成功 ({move_type})")
-                return True
-            else:
-                self.last_error = f"移動到 {point_name} 失敗"
-                print(f"  ✗ 移動操作失敗: {self.last_error}")
-                return False
-                
-        except Exception as e:
-            self.last_error = f"移動操作異常: {e}"
-            print(f"  ✗ 移動操作異常: {self.last_error}")
-            return False
-    
-    def _execute_move_to_point_fixed_angle(self, params: Dict[str, Any]) -> bool:
-        """執行移動到指定點位 - 使用固定第四軸角度"""
-        try:
-            point_name = params['point_name']
-            move_type = params.get('move_type', 'J')
-            
-            # 檢查點位是否存在
-            if point_name not in self.loaded_points:
-                self.last_error = f"點位不存在: {point_name}"
-                print(f"  ✗ 移動操作失敗: {self.last_error}")
-                return False
-            
-            # 取得點位數據
-            point_item = self.loaded_points[point_name]
-            
-            # 根據JSON格式提取關節數據
-            if 'joint' in point_item:
-                joint_data = point_item['joint'].copy()  # 複製避免修改原始數據
-            else:
-                self.last_error = f"點位{point_name}缺少joint數據"
-                print(f"  ✗ 移動操作失敗: {self.last_error}")
-                return False
-            
-            # 使用固定第四軸角度覆蓋原始j4
-            original_j4 = joint_data['j4']
-            joint_data['j4'] = self.J4_FIXED_DEGREE
-            
-            print(f"移動到點位 {point_name} (固定第四軸角度)")
-            print(f"  原始j4角度: {original_j4:.1f}度 -> 固定j4角度: {joint_data['j4']:.1f}度")
-            print(f"  關節角度: (j1:{joint_data['j1']:.1f}, j2:{joint_data['j2']:.1f}, j3:{joint_data['j3']:.1f}, j4:{joint_data['j4']:.1f})")
-            
-            # 執行移動 - 只支援關節運動
-            if move_type == 'J':
-                success = self.robot.joint_move_j(
-                    joint_data['j1'], 
-                    joint_data['j2'], 
-                    joint_data['j3'], 
-                    joint_data['j4']
-                )
-            else:
-                # 固定角度模式只支援關節運動
-                print(f"  ⚠️ 固定角度模式僅支援關節運動，自動切換為J模式")
-                success = self.robot.joint_move_j(
-                    joint_data['j1'], 
-                    joint_data['j2'], 
-                    joint_data['j3'], 
-                    joint_data['j4']
-                )
-            
-            if success:
-                print(f"  ✓ 移動到 {point_name} 成功 (固定j4={joint_data['j4']:.1f}度)")
                 return True
             else:
                 self.last_error = f"移動到 {point_name} 失敗"
@@ -582,5 +550,7 @@ class Flow5AssemblyExecutor:
             'points_loaded': len(self.loaded_points),
             'points_file_path': self.points_file_path,
             'j4_fixed_degree': self.J4_FIXED_DEGREE,
-            'angle_detection_enabled': False  # CG版本無角度檢測
+            'angle_detection_enabled': False,  # CG版本無角度檢測
+            'progress_register': 1202,  # 新增：標示進度寄存器地址
+            'progress_unified': True    # 新增：標示已統一進度
         }

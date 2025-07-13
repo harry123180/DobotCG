@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCD1 CG視覺檢測系統 - YOLOv11版本</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .version-badge {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            display: inline-block;
+            margin-left: 10px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .panel h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            font-weight: 400;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .status-item {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        .status-item h3 {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        .status-value {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.connected { background-color: #27ae60; }
+        .status-indicator.disconnected { background-color: #e74c3c; }
+        .status-indicator.ready { background-color: #f39c12; }
+        .status-indicator.running { background-color: #3498db; }
+        .status-indicator.alarm { background-color: #e74c3c; }
+
+        .controls-section {
+            margin-bottom: 25px;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #27ae60, #229954);
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95em;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .detection-results {
+            grid-column: 1 / -1;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid #3498db;
+        }
+
+        .result-card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .case-count {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .cg-f-count { color: #27ae60; }
+        .cg-b-count { color: #3498db; }
+        .stack-count { color: #e74c3c; }
+        .total-count { color: #8e44ad; }
+
+        .coordinates-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .coord-item {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .image-display {
+            text-align: center;
+            margin-top: 25px;
+        }
+
+        .image-display img {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 3px solid #fff;
+        }
+
+        .confidence-control {
+            background: linear-gradient(135deg, #e8f5e8, #d5f3d5);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid #27ae60;
+            margin-bottom: 20px;
+        }
+
+        .confidence-slider {
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        .confidence-value {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #27ae60;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .model-control {
+            background: linear-gradient(135deg, #fff3e0, #ffcc80);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid #ff9800;
+            margin-bottom: 20px;
+        }
+
+        .model-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+        }
+
+        .current-model {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #ff9800;
+        }
+
+        .model-info {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .registers-panel {
+            grid-column: 1 / -1;
+            margin-top: 20px;
+        }
+
+        .registers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .register-section {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .register-section h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1em;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        .register-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .register-item:last-child {
+            border-bottom: none;
+        }
+
+        .register-address {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #8e44ad;
+        }
+
+        .register-value {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #2980b9;
+        }
+
+        .calibration-panel {
+            background: linear-gradient(135deg, #fff9e6, #ffeaa7);
+            border-left: 5px solid #f39c12;
+        }
+
+        .calibration-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .performance-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #3498db;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.success { background: #27ae60; }
+        .notification.error { background: #e74c3c; }
+        .notification.warning { background: #f39c12; }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 標題區域 -->
+        <div class="header">
+            <h1>CCD1 CG視覺檢測系統 <span class="version-badge">YOLOv11 v5.1</span></h1>
+            <p>CG_B/CG_F/STACK物件分類檢測 | 多模型動態切換 | 基地址200-299</p>
+        </div>
+
+        <!-- 主要網格佈局 -->
+        <div class="main-grid">
+            <!-- 系統狀態面板 -->
+            <div class="panel">
+                <h2>CG系統狀態</h2>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <h3>Modbus連接</h3>
+                        <div class="status-value">
+                            <span class="status-indicator" id="modbus-indicator"></span>
+                            <span id="modbus-status">未連接</span>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <h3>相機狀態</h3>
+                        <div class="status-value">
+                            <span class="status-indicator" id="camera-indicator"></span>
+                            <span id="camera-status">未連接</span>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <h3>CG YOLOv11模型</h3>
+                        <div class="status-value">
+                            <span class="status-indicator" id="yolo-indicator"></span>
+                            <span id="yolo-status">未載入</span>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <h3>狀態機</h3>
+                        <div class="status-value">
+                            <span class="status-indicator" id="state-indicator"></span>
+                            <span id="state-status">未知</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 性能統計 -->
+                <div class="performance-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="operation-count">0</div>
+                        <div class="stat-label">操作次數</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="error-count">0</div>
+                        <div class="stat-label">錯誤次數</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="success-rate">100%</div>
+                        <div class="stat-label">成功率</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控制面板 -->
+            <div class="panel">
+                <h2>CG系統控制</h2>
+                
+                <!-- Modbus控制 -->
+                <div class="controls-section">
+                    <h3>Modbus TCP連接</h3>
+                    <div class="input-group">
+                        <label>服務器地址</label>
+                        <input type="text" id="modbus-ip" value="127.0.0.1" readonly>
+                    </div>
+                    <div class="controls-grid">
+                        <button class="btn btn-success" id="connect-modbus">連接Modbus</button>
+                        <button class="btn btn-danger" id="disconnect-modbus">斷開Modbus</button>
+                    </div>
+                </div>
+
+                <!-- 相機控制 -->
+                <div class="controls-section">
+                    <h3>相機控制</h3>
+                    <div class="input-group">
+                        <label>相機IP地址</label>
+                        <input type="text" id="camera-ip" value="192.168.1.8">
+                    </div>
+                    <div class="controls-grid">
+                        <button class="btn btn-success" id="init-camera">初始化相機</button>
+                        <button class="btn" id="capture-detect">拍照+檢測</button>
+                    </div>
+                </div>
+
+                <!-- 置信度控制 -->
+                <div class="confidence-control">
+                    <h3>CG YOLOv11置信度閾值</h3>
+                    <div class="confidence-value" id="confidence-display">0.80</div>
+                    <input type="range" class="confidence-slider" id="confidence-slider" 
+                           min="0.1" max="1.0" step="0.05" value="0.8">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8em; color: #666;">
+                        <span>0.1</span>
+                        <span>1.0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CG YOLO模型管理面板 -->
+        <div class="panel model-control">
+            <h2>🤖 CG YOLO模型管理</h2>
+            
+            <div class="model-status">
+                <div>
+                    <div class="current-model">當前模型: <span id="current-model-id">0</span></div>
+                    <div class="model-info">可用模型: <span id="available-model-count">0</span> 個</div>
+                </div>
+                <div>
+                    <div class="model-info">切換次數: <span id="model-switch-count">0</span></div>
+                    <div class="model-info">狀態: <span id="model-load-status">未載入</span></div>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>選擇CG模型 (0=未指定, 1-20=模型ID)</label>
+                <select id="model-select">
+                    <option value="0">0 - 未指定模型</option>
+                    <option value="1">1 - CG模型1</option>
+                    <option value="2">2 - CG模型2</option>
+                    <option value="3">3 - CG模型3</option>
+                    <option value="4">4 - CG模型4</option>
+                    <option value="5">5 - CG模型5</option>
+                    <option value="6">6 - CG模型6</option>
+                    <option value="7">7 - CG模型7</option>
+                    <option value="8">8 - CG模型8</option>
+                    <option value="9">9 - CG模型9</option>
+                    <option value="10">10 - CG模型10</option>
+                    <option value="11">11 - CG模型11</option>
+                    <option value="12">12 - CG模型12</option>
+                    <option value="13">13 - CG模型13</option>
+                    <option value="14">14 - CG模型14</option>
+                    <option value="15">15 - CG模型15</option>
+                    <option value="16">16 - CG模型16</option>
+                    <option value="17">17 - CG模型17</option>
+                    <option value="18">18 - CG模型18</option>
+                    <option value="19">19 - CG模型19</option>
+                    <option value="20">20 - CG模型20</option>
+                </select>
+            </div>
+
+            <div class="controls-grid">
+                <button class="btn btn-warning" id="switch-model">切換模型</button>
+                <button class="btn" id="refresh-model-status">刷新狀態</button>
+            </div>
+
+            <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.8); border-radius: 8px; font-size: 0.9em;">
+                <strong>說明：</strong>支援1-20個CG模型動態切換，檔案命名: model_1.pt, model_2.pt ... model_20.pt
+            </div>
+        </div>
+
+        <!-- 標定管理面板 -->
+        <div class="panel calibration-panel">
+            <h2>CG標定管理 (自動載入)</h2>
+            
+            <div class="calibration-status">
+                <div class="status-item">
+                    <h3>內參檔案</h3>
+                    <div class="status-value" id="intrinsic-status">未載入</div>
+                </div>
+                <div class="status-item">
+                    <h3>外參檔案</h3>
+                    <div class="status-value" id="extrinsic-status">未載入</div>
+                </div>
+                <div class="status-item">
+                    <h3>世界座標</h3>
+                    <div class="status-value" id="world-coord-status">無效</div>
+                </div>
+            </div>
+
+            <div class="controls-grid">
+                <button class="btn" id="scan-calibration">掃描標定檔案</button>
+                <button class="btn btn-warning" id="load-calibration">重新載入標定數據</button>
+            </div>
+            
+            <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.8); border-radius: 8px; font-size: 0.9em;">
+                <strong>說明：</strong>CG系統啟動時會自動掃描並載入標定檔案，無需手動操作。
+                手動按鈕僅用於重新載入或故障排除。
+            </div>
+        </div>
+
+        <!-- 檢測結果面板 -->
+        <div class="panel detection-results">
+            <h2>CG YOLOv11檢測結果 (三種分類)</h2>
+            
+            <div class="results-grid">
+                <!-- CG_F結果 -->
+                <div class="result-card">
+                    <h3>CG_F檢測</h3>
+                    <div class="case-count cg-f-count" id="cg-f-count">0</div>
+                    <div>檢測到的CG_F數量</div>
+                    <div style="font-size: 0.85em; color: #27ae60; margin-top: 5px;">
+                        包含像素座標與世界座標
+                    </div>
+                    
+                    <div class="coordinates-list" id="cg-f-coords">
+                        <div style="text-align: center; color: #999; padding: 20px;">
+                            尚無檢測結果
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CG_B結果 -->
+                <div class="result-card">
+                    <h3>CG_B檢測</h3>
+                    <div class="case-count cg-b-count" id="cg-b-count">0</div>
+                    <div>檢測到的CG_B數量</div>
+                    <div style="font-size: 0.85em; color: #3498db; margin-top: 5px;">
+                        像素座標檢測
+                    </div>
+                </div>
+
+                <!-- STACK結果 -->
+                <div class="result-card">
+                    <h3>STACK檢測</h3>
+                    <div class="case-count stack-count" id="stack-count">0</div>
+                    <div>檢測到的STACK數量</div>
+                    <div style="font-size: 0.85em; color: #e74c3c; margin-top: 5px;">
+                        堆疊物件檢測
+                    </div>
+                </div>
+
+                <!-- 總計結果 -->
+                <div class="result-card">
+                    <h3>CG檢測統計</h3>
+                    <div class="case-count total-count" id="total-count">0</div>
+                    <div>總檢測數量</div>
+                    
+                    <div style="margin-top: 15px; font-size: 0.9em;">
+                        <div>使用模型: <span id="used-model-id" style="color: #ff9800; font-weight: 600;">0</span></div>
+                        <div>拍照耗時: <span id="capture-time">0</span>ms</div>
+                        <div>處理耗時: <span id="process-time">0</span>ms</div>
+                        <div>總耗時: <span id="total-time">0</span>ms</div>
+                        <div>置信度: <span id="used-confidence">0.80</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 圖像顯示 -->
+            <div class="image-display">
+                <div id="image-placeholder" style="color: #999; padding: 40px;">
+                    CG檢測結果圖像將顯示在此處
+                </div>
+                <img id="detection-image" style="display: none;">
+            </div>
+        </div>
+
+        <!-- 自動初始化狀態顯示 -->
+        <div class="panel">
+            <h2>CG自動初始化狀態</h2>
+            <div class="status-grid">
+                <div class="status-item">
+                    <h3>Modbus自動連接</h3>
+                    <div class="status-value" id="auto-modbus-status">檢查中...</div>
+                </div>
+                <div class="status-item">
+                    <h3>相機自動初始化</h3>
+                    <div class="status-value" id="auto-camera-status">檢查中...</div>
+                </div>
+                <div class="status-item">
+                    <h3>標定檔案載入</h3>
+                    <div class="status-value" id="auto-calibration-status">檢查中...</div>
+                </div>
+                <div class="status-item">
+                    <h3>系統就緒狀態</h3>
+                    <div class="status-value" id="auto-ready-status">初始化中...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 寄存器監控面板 -->
+        <div class="panel registers-panel">
+            <h2>CG Modbus寄存器監控 (含模型管理)</h2>
+            
+            <div class="controls-grid" style="margin-bottom: 20px;">
+                <button class="btn" id="refresh-registers">刷新寄存器</button>
+                <button class="btn btn-warning" id="auto-refresh-toggle">自動刷新: 關閉</button>
+            </div>
+
+            <div class="registers-grid" id="registers-display">
+                <div style="text-align: center; color: #999; padding: 20px; grid-column: 1 / -1;">
+                    請連接CG Modbus後查看寄存器狀態
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Socket.IO 連接
+        const socket = io();
+        
+        // 全域變數
+        let autoRefreshRegisters = false;
+        let autoRefreshInterval = null;
+        
+        // DOM 元素
+        const elements = {
+            // 狀態指示器
+            modbusIndicator: document.getElementById('modbus-indicator'),
+            modbusStatus: document.getElementById('modbus-status'),
+            cameraIndicator: document.getElementById('camera-indicator'),
+            cameraStatus: document.getElementById('camera-status'),
+            yoloIndicator: document.getElementById('yolo-indicator'),
+            yoloStatus: document.getElementById('yolo-status'),
+            stateIndicator: document.getElementById('state-indicator'),
+            stateStatus: document.getElementById('state-status'),
+            
+            // 統計數據
+            operationCount: document.getElementById('operation-count'),
+            errorCount: document.getElementById('error-count'),
+            successRate: document.getElementById('success-rate'),
+            
+            // 控制按鈕
+            connectModbus: document.getElementById('connect-modbus'),
+            disconnectModbus: document.getElementById('disconnect-modbus'),
+            initCamera: document.getElementById('init-camera'),
+            captureDetect: document.getElementById('capture-detect'),
+            
+            // 輸入欄位
+            modbusIp: document.getElementById('modbus-ip'),
+            cameraIp: document.getElementById('camera-ip'),
+            confidenceSlider: document.getElementById('confidence-slider'),
+            confidenceDisplay: document.getElementById('confidence-display'),
+            
+            // 檢測結果 - CG版本
+            cgFCount: document.getElementById('cg-f-count'),
+            cgBCount: document.getElementById('cg-b-count'),
+            stackCount: document.getElementById('stack-count'),
+            totalCount: document.getElementById('total-count'),
+            cgFCoords: document.getElementById('cg-f-coords'),
+            
+            // 時間統計
+            captureTime: document.getElementById('capture-time'),
+            processTime: document.getElementById('process-time'),
+            totalTime: document.getElementById('total-time'),
+            usedConfidence: document.getElementById('used-confidence'),
+            usedModelId: document.getElementById('used-model-id'),
+            
+            // 圖像顯示
+            imagePlaceholder: document.getElementById('image-placeholder'),
+            detectionImage: document.getElementById('detection-image'),
+            
+            // 標定狀態
+            intrinsicStatus: document.getElementById('intrinsic-status'),
+            extrinsicStatus: document.getElementById('extrinsic-status'),
+            worldCoordStatus: document.getElementById('world-coord-status'),
+            
+            // 自動初始化狀態
+            autoModbusStatus: document.getElementById('auto-modbus-status'),
+            autoCameraStatus: document.getElementById('auto-camera-status'),
+            autoCalibrationStatus: document.getElementById('auto-calibration-status'),
+            autoReadyStatus: document.getElementById('auto-ready-status'),
+            
+            // 標定控制
+            scanCalibration: document.getElementById('scan-calibration'),
+            loadCalibration: document.getElementById('load-calibration'),
+            
+            // 模型管理
+            currentModelId: document.getElementById('current-model-id'),
+            availableModelCount: document.getElementById('available-model-count'),
+            modelSwitchCount: document.getElementById('model-switch-count'),
+            modelLoadStatus: document.getElementById('model-load-status'),
+            modelSelect: document.getElementById('model-select'),
+            switchModel: document.getElementById('switch-model'),
+            refreshModelStatus: document.getElementById('refresh-model-status'),
+            
+            // 寄存器監控
+            refreshRegisters: document.getElementById('refresh-registers'),
+            autoRefreshToggle: document.getElementById('auto-refresh-toggle'),
+            registersDisplay: document.getElementById('registers-display')
+        };
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            updateStatus();
+            updateModelStatus();
+            
+            // 定期更新狀態
+            setInterval(updateStatus, 3000);
+            setInterval(updateModelStatus, 5000);
+        });
+        
+        // 設置事件監聽器
+        function setupEventListeners() {
+            // Modbus控制
+            elements.connectModbus.addEventListener('click', connectModbus);
+            elements.disconnectModbus.addEventListener('click', disconnectModbus);
+            
+            // 相機控制
+            elements.initCamera.addEventListener('click', initializeCamera);
+            elements.captureDetect.addEventListener('click', captureAndDetect);
+            
+            // 置信度控制
+            elements.confidenceSlider.addEventListener('input', updateConfidenceDisplay);
+            elements.confidenceSlider.addEventListener('change', updateConfidenceThreshold);
+            
+            // 標定控制
+            elements.scanCalibration.addEventListener('click', scanCalibrationFiles);
+            elements.loadCalibration.addEventListener('click', loadCalibrationData);
+            
+            // 模型管理
+            elements.switchModel.addEventListener('click', switchModel);
+            elements.refreshModelStatus.addEventListener('click', updateModelStatus);
+            
+            // 寄存器監控
+            elements.refreshRegisters.addEventListener('click', refreshRegisters);
+            elements.autoRefreshToggle.addEventListener('click', toggleAutoRefresh);
+            
+            // Socket.IO 事件
+            socket.on('status_update', handleStatusUpdate);
+            socket.on('detection_result', handleDetectionResult);
+        }
+        
+        // 更新模型狀態
+        async function updateModelStatus() {
+            try {
+                const response = await fetch('/api/model_status');
+                const data = await response.json();
+                
+                if (data.success) {
+                    elements.currentModelId.textContent = data.current_model_id || 0;
+                    elements.availableModelCount.textContent = data.available_model_count || 0;
+                    elements.modelSwitchCount.textContent = data.model_switch_count || 0;
+                    elements.modelLoadStatus.textContent = data.is_model_loaded ? '已載入' : '未載入';
+                    
+                    elements.modelSelect.value = data.current_model_id || 0;
+                    updateModelSelectOptions(data.available_models || []);
+                }
+            } catch (error) {
+                console.error('CG更新模型狀態失敗:', error);
+            }
+        }
+        
+        // 更新模型選擇選項
+        function updateModelSelectOptions(availableModels) {
+            const options = elements.modelSelect.querySelectorAll('option');
+            options.forEach(option => {
+                const modelId = parseInt(option.value);
+                if (modelId > 0) {
+                    const isAvailable = availableModels.includes(modelId);
+                    option.style.color = isAvailable ? '#27ae60' : '#95a5a6';
+                    option.textContent = option.textContent.split(' - ')[0] + ' - ' + 
+                                       (isAvailable ? 'CG模型' + modelId + ' (可用)' : 'CG模型' + modelId + ' (不存在)');
+                }
+            });
+        }
+        
+        // 切換模型
+        async function switchModel() {
+            const modelId = parseInt(elements.modelSelect.value);
+            setButtonLoading(elements.switchModel, true);
+            
+            try {
+                const response = await fetch('/api/switch_model', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model_id: modelId })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification(`CG模型切換成功: 模型${modelId}`, 'success');
+                    
+                    elements.currentModelId.textContent = data.current_model_id;
+                    elements.usedModelId.textContent = data.current_model_id;
+                    
+                    setTimeout(() => {
+                        updateModelStatus();
+                        updateStatus();
+                    }, 200);
+                } else {
+                    showNotification('CG模型切換失敗: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('CG模型切換異常: ' + error.message, 'error');
+            } finally {
+                setButtonLoading(elements.switchModel, false);
+            }
+        }
+        
+        // 更新系統狀態
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateStatusDisplay(data.status);
+                }
+            } catch (error) {
+                console.error('CG更新狀態失敗:', error);
+            }
+        }
+        
+        // 更新狀態顯示
+        function updateStatusDisplay(status) {
+            // Modbus狀態
+            updateStatusIndicator(elements.modbusIndicator, elements.modbusStatus, 
+                                status.modbus_connected, '已連接', '未連接');
+            
+            // 相機狀態
+            updateStatusIndicator(elements.cameraIndicator, elements.cameraStatus, 
+                                status.camera_connected, '已連接', '未連接');
+            
+            // YOLOv11狀態
+            updateStatusIndicator(elements.yoloIndicator, elements.yoloStatus, 
+                                status.yolo_loaded, '已載入', '未載入');
+            
+            // 狀態機
+            let stateText = '';
+            if (status.alarm) stateText = 'Alarm';
+            else if (status.running) stateText = 'Running';
+            else if (status.ready) stateText = 'Ready';
+            else stateText = 'Not Ready';
+            
+            elements.stateIndicator.className = `status-indicator ${status.ready ? 'ready' : status.running ? 'running' : status.alarm ? 'alarm' : 'disconnected'}`;
+            elements.stateStatus.textContent = stateText;
+            
+            // 統計數據
+            elements.operationCount.textContent = status.operation_count || 0;
+            elements.errorCount.textContent = status.error_count || 0;
+            
+            const ops = status.operation_count || 0;
+            const errors = status.error_count || 0;
+            const successRate = ops > 0 ? ((ops - errors) / ops * 100).toFixed(1) : '100';
+            elements.successRate.textContent = successRate + '%';
+            
+            // 置信度閾值
+            if (status.confidence_threshold) {
+                elements.confidenceSlider.value = status.confidence_threshold;
+                elements.confidenceDisplay.textContent = status.confidence_threshold.toFixed(2);
+            }
+            
+            // 標定狀態
+            if (status.calibration_status) {
+                const cal = status.calibration_status;
+                elements.intrinsicStatus.textContent = cal.intrinsic_loaded ? '已載入' : '未載入';
+                elements.extrinsicStatus.textContent = cal.extrinsic_loaded ? '已載入' : '未載入';
+                elements.worldCoordStatus.textContent = cal.transformer_valid ? '有效' : '無效';
+            }
+            
+            // 自動初始化狀態更新
+            elements.autoModbusStatus.textContent = status.modbus_connected ? '已自動連接' : '連接失敗';
+            elements.autoCameraStatus.textContent = status.camera_connected ? '已自動初始化' : '初始化失敗';
+            elements.autoCalibrationStatus.textContent = status.calibration_valid ? '已自動載入' : '載入失敗';
+            
+            // 系統整體就緒狀態
+            const allReady = status.modbus_connected && status.camera_connected && status.yolo_loaded && status.calibration_valid;
+            elements.autoReadyStatus.textContent = allReady ? 'CG系統完全就緒' : 'CG部分組件未就緒';
+            elements.autoReadyStatus.style.color = allReady ? '#27ae60' : '#e74c3c';
+            
+            // 控制按鈕狀態
+            updateButtonStates(status);
+        }
+        
+        // 更新狀態指示器
+        function updateStatusIndicator(indicator, text, isConnected, connectedText, disconnectedText) {
+            indicator.className = `status-indicator ${isConnected ? 'connected' : 'disconnected'}`;
+            text.textContent = isConnected ? connectedText : disconnectedText;
+        }
+        
+        // 更新按鈕狀態
+        function updateButtonStates(status) {
+            elements.connectModbus.disabled = status.modbus_connected;
+            elements.disconnectModbus.disabled = !status.modbus_connected;
+            elements.initCamera.disabled = !status.modbus_connected;
+            elements.captureDetect.disabled = !status.camera_connected || !status.yolo_loaded;
+        }
+        
+        // 置信度顯示更新
+        function updateConfidenceDisplay() {
+            const value = parseFloat(elements.confidenceSlider.value);
+            elements.confidenceDisplay.textContent = value.toFixed(2);
+        }
+        
+        // 更新置信度閾值
+        async function updateConfidenceThreshold() {
+            const threshold = parseFloat(elements.confidenceSlider.value);
+            
+            try {
+                const response = await fetch('/api/update_confidence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ threshold: threshold })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('CG置信度閾值已更新', 'success');
+                } else {
+                    showNotification('CG更新置信度失敗: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('CG更新置信度異常: ' + error.message, 'error');
+            }
+        }
+        
+        // 連接Modbus
+        async function connectModbus() {
+            setButtonLoading(elements.connectModbus, true);
+            
+            try {
+                const response = await fetch('/api/connect_modbus', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('CG Modbus連接成功', 'success');
+                } else {
+                    showNotification('CG Modbus連接失敗: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showNotification('CG Modbus連接異常: ' + error.message, 'error');
+            } finally {
+                setButtonLoading(elements.connectModbus, false);
+            }
+        }
+        
+        // 斷開Modbus
+        async function disconnectModbus() {
+            try {
+                const response = await fetch('/api/disconnect_modbus', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('CG Modbus已斷開', 'success');
+                } else {
+                    showNotification('CG斷開Modbus失敗: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showNotification('CG斷開Modbus異常: ' + error.message, 'error');
+            }
+        }
+        
+        // 初始化相機
+        async function initializeCamera() {
+            setButtonLoading(elements.initCamera, true);
+            
+            try {
+                const cameraIp = elements.cameraIp.value;
+                const response = await fetch('/api/initialize_camera', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: cameraIp })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('CG相機初始化成功', 'success');
+                } else {
+                    showNotification('CG相機初始化失敗: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showNotification('CG相機初始化異常: ' + error.message, 'error');
+            } finally {
+                setButtonLoading(elements.initCamera, false);
+            }
+        }
+        
+        // 拍照並檢測
+        async function captureAndDetect() {
+            setButtonLoading(elements.captureDetect, true);
+            
+            try {
+                console.log('CG開始拍照+檢測請求');
+                const response = await fetch('/api/capture_and_detect', { method: 'POST' });
+                const data = await response.json();
+                
+                console.log('CG收到檢測響應:', data);
+                
+                if (data.success) {
+                    updateDetectionResults(data);
+                    showNotification('CG檢測完成', 'success');
+                } else {
+                    console.error('CG檢測失敗:', data.error_message || data.error);
+                    showNotification('CG檢測失敗: ' + (data.error_message || data.error || '未知錯誤'), 'error');
+                }
+            } catch (error) {
+                console.error('CG檢測異常:', error);
+                showNotification('CG檢測異常: ' + error.message, 'error');
+            } finally {
+                setButtonLoading(elements.captureDetect, false);
+            }
+        }
+        
+        // 更新檢測結果 - CG版本
+        function updateDetectionResults(data) {
+            console.log('CG收到檢測結果:', data);
+            
+            // 更新CG檢測計數
+            elements.cgFCount.textContent = data.cg_f_count || 0;
+            elements.cgBCount.textContent = data.cg_b_count || 0;
+            elements.stackCount.textContent = data.stack_count || 0;
+            elements.totalCount.textContent = data.total_detections || 0;
+            
+            // 更新時間統計和模型ID
+            elements.captureTime.textContent = (data.capture_time || 0).toFixed(1);
+            elements.processTime.textContent = (data.processing_time || 0).toFixed(1);
+            elements.totalTime.textContent = (data.total_time || 0).toFixed(1);
+            elements.usedConfidence.textContent = (data.confidence_threshold || 0.8).toFixed(2);
+            
+            if (data.model_id_used !== undefined) {
+                elements.usedModelId.textContent = data.model_id_used;
+                console.log('CG更新使用的模型ID:', data.model_id_used);
+            }
+            
+            // 更新CG_F座標
+            const cgFCoords = data.cg_f_coords || [];
+            const cgFWorldCoords = data.cg_f_world_coords || [];
+            
+            updateCGFCoordinates(cgFCoords, cgFWorldCoords);
+            
+            // 更新圖像
+            if (data.image) {
+                elements.detectionImage.src = data.image;
+                elements.detectionImage.style.display = 'block';
+                elements.imagePlaceholder.style.display = 'none';
+            }
+            
+            // 更新世界座標狀態
+            const worldCoordValid = data.world_coord_valid || (cgFWorldCoords.length > 0);
+            if (worldCoordValid) {
+                elements.worldCoordStatus.textContent = '有效';
+                elements.worldCoordStatus.style.color = '#27ae60';
+                showNotification(`CG檢測完成 (模型${data.model_id_used || 0}): F=${data.cg_f_count}, B=${data.cg_b_count}, S=${data.stack_count}, 包含世界座標`, 'success');
+            } else {
+                elements.worldCoordStatus.textContent = '無效';
+                elements.worldCoordStatus.style.color = '#e74c3c';
+                showNotification(`CG檢測完成 (模型${data.model_id_used || 0}): F=${data.cg_f_count}, B=${data.cg_b_count}, S=${data.stack_count}`, 'success');
+            }
+            
+            setTimeout(updateModelStatus, 500);
+        }
+        
+        // 更新CG_F座標列表
+        function updateCGFCoordinates(coords, worldCoords) {
+            if (!coords || coords.length === 0) {
+                elements.cgFCoords.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">未檢測到CG_F</div>';
+                return;
+            }
+            
+            let html = '';
+            coords.forEach((coord, index) => {
+                let x, y;
+                if (Array.isArray(coord) && coord.length >= 2) {
+                    x = coord[0];
+                    y = coord[1];
+                } else if (typeof coord === 'object' && coord.x !== undefined && coord.y !== undefined) {
+                    x = coord.x;
+                    y = coord.y;
+                } else {
+                    console.warn('CG未知的座標格式:', coord);
+                    return;
+                }
+                
+                let coordText = `CG_F ${index + 1}: (${x.toFixed(1)}, ${y.toFixed(1)})`;
+                
+                if (worldCoords && worldCoords[index]) {
+                    let worldX, worldY;
+                    const worldCoord = worldCoords[index];
+                    
+                    if (Array.isArray(worldCoord) && worldCoord.length >= 2) {
+                        worldX = worldCoord[0];
+                        worldY = worldCoord[1];
+                    } else if (typeof worldCoord === 'object' && worldCoord.x !== undefined && worldCoord.y !== undefined) {
+                        worldX = worldCoord.x;
+                        worldY = worldCoord.y;
+                    } else {
+                        worldX = 0;
+                        worldY = 0;
+                    }
+                    
+                    coordText += `<br><small style="color: #27ae60;">世界座標: (${worldX.toFixed(2)}, ${worldY.toFixed(2)}) mm</small>`;
+                }
+                
+                html += `<div class="coord-item">${coordText}</div>`;
+            });
+            
+            elements.cgFCoords.innerHTML = html;
+        }
+        
+        // 掃描標定檔案
+        async function scanCalibrationFiles() {
+            try {
+                const response = await fetch('/api/scan_calibration');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const count = data.total_npy_files || 0;
+                    showNotification(`CG掃描完成，發現 ${count} 個NPY檔案`, 'success');
+                } else {
+                    showNotification('CG掃描失敗: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('CG掃描異常: ' + error.message, 'error');
+            }
+        }
+        
+        // 載入標定數據
+        async function loadCalibrationData() {
+            setButtonLoading(elements.loadCalibration, true);
+            
+            try {
+                const response = await fetch('/api/load_calibration', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('CG標定數據載入成功', 'success');
+                } else {
+                    showNotification('CG標定數據載入失敗: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('CG載入標定數據異常: ' + error.message, 'error');
+            } finally {
+                setButtonLoading(elements.loadCalibration, false);
+            }
+        }
+        
+        // 刷新寄存器
+        async function refreshRegisters() {
+            try {
+                const response = await fetch('/api/modbus/registers');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayRegisters(data.registers);
+                    showNotification('CG寄存器已刷新', 'success');
+                } else {
+                    showNotification('CG刷新寄存器失敗: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('CG刷新寄存器異常: ' + error.message, 'error');
+            }
+        }
+        
+        // 顯示寄存器數據
+        function displayRegisters(registers) {
+            if (!registers || Object.keys(registers).length === 0) {
+                elements.registersDisplay.innerHTML = '<div style="text-align: center; color: #999; padding: 20px; grid-column: 1 / -1;">無CG寄存器數據</div>';
+                return;
+            }
+            
+            const sections = {
+                '控制寄存器': {},
+                '模型管理': {},  
+                '檢測結果': {},
+                '世界座標': {},
+                '統計資訊': {},
+                '其他': {}
+            };
+            
+            // CG分類寄存器邏輯
+            Object.entries(registers).forEach(([key, value]) => {
+                if (key.includes('控制') || key.includes('狀態') || key.includes('置信度')) {
+                    sections['控制寄存器'][key] = value;
+                } else if (key.includes('MODEL') || key.includes('模型') || key.includes('202')) {
+                    sections['模型管理'][key] = value;
+                } else if (key.includes('CG_F') || key.includes('CG_B') || key.includes('STACK') || 
+                        key.includes('檢測') || key.includes('數量') || 
+                        key.includes('240_') || key.includes('241_') || key.includes('242_') || key.includes('243_') || key.includes('244_')) {
+                    sections['檢測結果'][key] = value;
+                } else if (key.includes('世界') || key.includes('WORLD') || 
+                        key.includes('260_') || key.includes('261_') || key.includes('280_')) {
+                    sections['世界座標'][key] = value;
+                } else if (key.includes('耗時') || key.includes('計數') || 
+                        key.includes('281_') || key.includes('282_') || key.includes('284_')) {
+                    sections['統計資訊'][key] = value;
+                } else {
+                    sections['其他'][key] = value;
+                }
+            });
+            
+            let html = '';
+            Object.entries(sections).forEach(([sectionName, sectionData]) => {
+                if (Object.keys(sectionData).length > 0) {
+                    html += `<div class="register-section">
+                        <h4>CG ${sectionName}</h4>`;
+                    
+                    Object.entries(sectionData).forEach(([key, value]) => {
+                        html += `<div class="register-item">
+                            <span class="register-address">${key}</span>
+                            <span class="register-value">${value}</span>
+                        </div>`;
+                    });
+                    
+                    html += '</div>';
+                }
+            });
+            
+            elements.registersDisplay.innerHTML = html;
+        }
+        
+        // 切換自動刷新
+        function toggleAutoRefresh() {
+            autoRefreshRegisters = !autoRefreshRegisters;
+            elements.autoRefreshToggle.textContent = `自動刷新: ${autoRefreshRegisters ? '開啟' : '關閉'}`;
+            elements.autoRefreshToggle.className = `btn ${autoRefreshRegisters ? 'btn-success' : 'btn-warning'}`;
+            
+            if (autoRefreshRegisters) {
+                autoRefreshInterval = setInterval(refreshRegisters, 2000);
+                refreshRegisters();
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            }
+        }
+        
+        // 設置按鈕載入狀態
+        function setButtonLoading(button, loading) {
+            if (loading) {
+                if (!button.hasAttribute('data-original-text')) {
+                    button.setAttribute('data-original-text', button.textContent);
+                }
+                button.disabled = true;
+                button.innerHTML = '<span class="loading"></span> 處理中...';
+            } else {
+                button.disabled = false;
+                const originalText = button.getAttribute('data-original-text') || button.textContent.replace('處理中...', '').trim();
+                button.innerHTML = originalText;
+            }
+        }
+        
+        // 顯示通知
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        // Socket.IO 事件處理
+        function handleStatusUpdate(status) {
+            updateStatusDisplay(status);
+        }
+        
+        function handleDetectionResult(result) {
+            updateDetectionResults(result);
+        }
+        
+        // 頁面離開時清理
+        window.addEventListener('beforeunload', function() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

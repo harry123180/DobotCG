@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CG AutoProgram控制面板</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .container-fluid {
+            padding: 20px;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 15px 20px;
+            font-weight: 600;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .status-online { background-color: #28a745; }
+        .status-offline { background-color: #dc3545; }
+        .status-running { background-color: #ffc107; }
+        
+        .btn-custom {
+            border-radius: 25px;
+            padding: 10px 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .progress {
+            height: 8px;
+            border-radius: 4px;
+        }
+        
+        .progress-bar {
+            border-radius: 4px;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        .log-container {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .timestamp {
+            color: #a0aec0;
+            font-size: 0.8rem;
+        }
+        
+        .feeding-status {
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .feeding-stop { background-color: #f8d7da; color: #721c24; }
+        .feeding-running { background-color: #d4edda; color: #155724; }
+        .feeding-vibrating { background-color: #fff3cd; color: #856404; }
+        .feeding-feeding { background-color: #cce5ff; color: #004085; }
+        .feeding-detecting { background-color: #e2e3e5; color: #383d41; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- 標題欄 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">
+                            <i class="fas fa-robot me-2"></i>
+                            CG AutoProgram控制面板
+                        </h3>
+                        <div class="d-flex align-items-center">
+                            <span class="status-indicator" id="connectionStatus"></span>
+                            <span id="connectionText">未連接</span>
+                            <button class="btn btn-outline-light btn-sm ms-3" id="connectBtn">
+                                <i class="fas fa-plug me-1"></i>連接
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- 左側控制面板 -->
+            <div class="col-lg-6">
+                <!-- CG AutoProgram流程控制 -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-play-circle me-2"></i>CG AutoProgram流程控制
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                            <button class="btn btn-success btn-custom me-md-2" id="startAutoProgramBtn">
+                                <i class="fas fa-play me-1"></i>啟動CG AutoProgram
+                            </button>
+                            <button class="btn btn-danger btn-custom" id="stopAutoProgramBtn">
+                                <i class="fas fa-stop me-1"></i>停止CG AutoProgram
+                            </button>
+                        </div>
+                        <div class="mt-3 text-center">
+                            <small class="text-muted">控制地址: 1350</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flow控制 -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-cogs me-2"></i>Flow控制
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Flow1完成狀態</h6>
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="badge" id="flow1StatusBadge">未知</span>
+                                    <button class="btn btn-warning btn-sm ms-2" id="clearFlow1Btn">
+                                        <i class="fas fa-eraser me-1"></i>清除
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Flow5控制</h6>
+                                <div class="d-grid gap-1">
+                                    <button class="btn btn-primary btn-sm" id="startFlow5Btn">
+                                        <i class="fas fa-play me-1"></i>觸發Flow5
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm" id="clearFlow5Btn">
+                                        <i class="fas fa-times me-1"></i>清除Flow5
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Flow5完成狀態</h6>
+                                <span class="badge" id="flow5StatusBadge">未知</span>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="text-center">
+                            <button class="btn btn-info btn-custom" id="autoHandshakeBtn">
+                                <i class="fas fa-handshake me-1"></i>自動交握
+                            </button>
+                            <div class="mt-2">
+                                <small class="text-muted">自動執行: 確認Flow1完成→清除→觸發Flow5→等待執行→清除</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 自動供料狀態 -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-industry me-2"></i>自動供料狀態
+                    </div>
+                    <div class="card-body">
+                        <div class="feeding-status" id="feedingStatus">系統停止</div>
+                        
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="vpVibrationStatus">0</div>
+                                    <div class="stat-label">VP震動狀態</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="flow4Status">0</div>
+                                    <div class="stat-label">直振供應狀態</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="cgStatus">0</div>
+                                    <div class="stat-label">CG狀態</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右側監控面板 -->
+            <div class="col-lg-6">
+                <!-- CG檢測結果 -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-eye me-2"></i>CG檢測結果
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-3">
+                                <div class="stat-card">
+                                    <div class="stat-number text-primary" id="cgFCount">0</div>
+                                    <div class="stat-label">CG_F數量</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-card">
+                                    <div class="stat-number text-success" id="cgBCount">0</div>
+                                    <div class="stat-label">CG_B數量</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-card">
+                                    <div class="stat-number text-warning" id="stackCount">0</div>
+                                    <div class="stat-label">STACK數量</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-card">
+                                    <div class="stat-number text-info" id="totalDetections">0</div>
+                                    <div class="stat-label">總檢測數量</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 運動進度 -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-line me-2"></i>運動進度監控
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h6>當前運動Flow: <span class="badge bg-info" id="currentFlowBadge">無</span></h6>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Flow1進度</span>
+                                <span id="flow1ProgressText">0%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-success" id="flow1ProgressBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Flow5進度</span>
+                                <span id="flow5ProgressText">0%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-primary" id="flow5ProgressBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="flow1TriggerCount">0</div>
+                                    <div class="stat-label">Flow1觸發次數</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="flow5CompleteCount">0</div>
+                                    <div class="stat-label">Flow5完成次數</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 系統統計 -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar me-2"></i>系統統計
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-3">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="cycleCount">0</div>
+                                    <div class="stat-label">檢測週期</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="cgFFoundCount">0</div>
+                                    <div class="stat-label">CG_F找到</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="vpVibrationCount">0</div>
+                                    <div class="stat-label">VP震動</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="flow4TriggerCount">0</div>
+                                    <div class="stat-label">直振供應</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row text-center mt-3">
+                            <div class="col-6">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="flow4ConsecutiveCount">0</div>
+                                    <div class="stat-label">連續直振次數</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="vpEmptyDetectionCount">0</div>
+                                    <div class="stat-label">VP空檢測次數</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作日誌 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-list me-2"></i>操作日誌</span>
+                        <button class="btn btn-outline-light btn-sm" id="clearLogBtn">
+                            <i class="fas fa-trash me-1"></i>清除日誌
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="log-container" id="logContainer">
+                            <div class="timestamp">[系統啟動]</div>
+                            <div>CG AutoProgram控制面板已載入，等待連接...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <!-- Socket.IO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    
+    <script>
+        // Socket.IO連接
+        const socket = io();
+        
+        // DOM元素
+        const elements = {
+            connectionStatus: document.getElementById('connectionStatus'),
+            connectionText: document.getElementById('connectionText'),
+            connectBtn: document.getElementById('connectBtn'),
+            
+            startAutoProgramBtn: document.getElementById('startAutoProgramBtn'),
+            stopAutoProgramBtn: document.getElementById('stopAutoProgramBtn'),
+            
+            flow1StatusBadge: document.getElementById('flow1StatusBadge'),
+            clearFlow1Btn: document.getElementById('clearFlow1Btn'),
+            flow5StatusBadge: document.getElementById('flow5StatusBadge'),
+            startFlow5Btn: document.getElementById('startFlow5Btn'),
+            clearFlow5Btn: document.getElementById('clearFlow5Btn'),
+            autoHandshakeBtn: document.getElementById('autoHandshakeBtn'),
+            
+            feedingStatus: document.getElementById('feedingStatus'),
+            vpVibrationStatus: document.getElementById('vpVibrationStatus'),
+            flow4Status: document.getElementById('flow4Status'),
+            cgStatus: document.getElementById('cgStatus'),
+            
+            'cgFCount': document.getElementById('cgFCount'),
+            'cgBCount': document.getElementById('cgBCount'),
+            'stackCount': document.getElementById('stackCount'),
+            'totalDetections': document.getElementById('totalDetections'),
+            
+            currentFlowBadge: document.getElementById('currentFlowBadge'),
+            flow1ProgressBar: document.getElementById('flow1ProgressBar'),
+            flow1ProgressText: document.getElementById('flow1ProgressText'),
+            flow5ProgressBar: document.getElementById('flow5ProgressBar'),
+            flow5ProgressText: document.getElementById('flow5ProgressText'),
+            
+            'cycleCount': document.getElementById('cycleCount'),
+            'cgFFoundCount': document.getElementById('cgFFoundCount'),
+            'vpVibrationCount': document.getElementById('vpVibrationCount'),
+            'flow4TriggerCount': document.getElementById('flow4TriggerCount'),
+            'flow1TriggerCount': document.getElementById('flow1TriggerCount'),
+            'flow5CompleteCount': document.getElementById('flow5CompleteCount'),
+            'flow4ConsecutiveCount': document.getElementById('flow4ConsecutiveCount'),
+            'vpEmptyDetectionCount': document.getElementById('vpEmptyDetectionCount'),
+            
+            logContainer: document.getElementById('logContainer'),
+            clearLogBtn: document.getElementById('clearLogBtn')
+        };
+        
+        // 狀態變數
+        let isConnected = false;
+        let isAutoHandshakeRunning = false;
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            updateConnectionStatus(false);
+        });
+        
+        // 設置事件監聽器
+        function setupEventListeners() {
+            // 連接按鈕
+            elements.connectBtn.addEventListener('click', toggleConnection);
+            
+            // AutoProgram控制
+            elements.startAutoProgramBtn.addEventListener('click', () => controlAutoProgram('start'));
+            elements.stopAutoProgramBtn.addEventListener('click', () => controlAutoProgram('stop'));
+            
+            // Flow控制
+            elements.clearFlow1Btn.addEventListener('click', () => controlFlow1('clear'));
+            elements.startFlow5Btn.addEventListener('click', () => controlFlow5('start'));
+            elements.clearFlow5Btn.addEventListener('click', () => controlFlow5('clear'));
+            elements.autoHandshakeBtn.addEventListener('click', executeAutoHandshake);
+            
+            // 清除日誌
+            elements.clearLogBtn.addEventListener('click', clearLog);
+        }
+        
+        // Socket.IO事件處理
+        socket.on('connect', function() {
+            logMessage('SocketIO連接成功');
+        });
+        
+        socket.on('disconnect', function() {
+            logMessage('SocketIO連接斷開');
+            updateConnectionStatus(false);
+        });
+        
+        socket.on('status_update', function(data) {
+            updateSystemStatus(data);
+        });
+        
+        // 連接控制
+        async function toggleConnection() {
+            if (isConnected) {
+                await disconnectModbus();
+            } else {
+                await connectModbus();
+            }
+        }
+        
+        async function connectModbus() {
+            try {
+                logMessage('正在連接Modbus服務器...');
+                
+                const response = await fetch('/api/connect', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    logMessage('Modbus連接成功');
+                    updateConnectionStatus(true);
+                    if (result.status) {
+                        updateSystemStatus(result.status);
+                    }
+                } else {
+                    logMessage(`Modbus連接失敗: ${result.message}`);
+                    updateConnectionStatus(false);
+                }
+                
+            } catch (error) {
+                logMessage(`連接錯誤: ${error.message}`);
+                updateConnectionStatus(false);
+            }
+        }
+        
+        async function disconnectModbus() {
+            try {
+                const response = await fetch('/api/disconnect', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const result = await response.json();
+                logMessage(result.message);
+                updateConnectionStatus(false);
+                
+            } catch (error) {
+                logMessage(`斷開連接錯誤: ${error.message}`);
+            }
+        }
+        
+        // AutoProgram控制
+        async function controlAutoProgram(action) {
+            try {
+                logMessage(`正在${action === 'start' ? '啟動' : '停止'}CG AutoProgram流程...`);
+                
+                const response = await fetch('/api/control/autoprogram', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: action})
+                });
+                
+                const result = await response.json();
+                logMessage(result.message);
+                
+            } catch (error) {
+                logMessage(`CG AutoProgram控制錯誤: ${error.message}`);
+            }
+        }
+        
+        // Flow1控制
+        async function controlFlow1(action) {
+            try {
+                logMessage('正在清除Flow1完成狀態...');
+                
+                const response = await fetch('/api/control/flow1', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: action})
+                });
+                
+                const result = await response.json();
+                logMessage(result.message);
+                
+            } catch (error) {
+                logMessage(`Flow1控制錯誤: ${error.message}`);
+            }
+        }
+        
+        // Flow5控制
+        async function controlFlow5(action) {
+            try {
+                const actionText = action === 'start' ? '觸發Flow5' : '清除Flow5控制地址';
+                logMessage(`正在${actionText}...`);
+                
+                const response = await fetch('/api/control/flow5', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: action})
+                });
+                
+                const result = await response.json();
+                logMessage(result.message);
+                
+            } catch (error) {
+                logMessage(`Flow5控制錯誤: ${error.message}`);
+            }
+        }
+        
+        // 自動交握
+        async function executeAutoHandshake() {
+            if (isAutoHandshakeRunning) {
+                logMessage('自動交握流程已在執行中，請稍後...');
+                return;
+            }
+            
+            try {
+                isAutoHandshakeRunning = true;
+                elements.autoHandshakeBtn.disabled = true;
+                elements.autoHandshakeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>執行中...';
+                
+                logMessage('正在執行自動交握流程...');
+                
+                const response = await fetch('/api/control/auto_handshake', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const result = await response.json();
+                logMessage(result.message);
+                
+            } catch (error) {
+                logMessage(`自動交握錯誤: ${error.message}`);
+            } finally {
+                isAutoHandshakeRunning = false;
+                elements.autoHandshakeBtn.disabled = false;
+                elements.autoHandshakeBtn.innerHTML = '<i class="fas fa-handshake me-1"></i>自動交握';
+            }
+        }
+        
+        // 更新連接狀態
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            
+            if (connected) {
+                elements.connectionStatus.className = 'status-indicator status-online';
+                elements.connectionText.textContent = '已連接';
+                elements.connectBtn.innerHTML = '<i class="fas fa-unplug me-1"></i>斷開';
+                elements.connectBtn.className = 'btn btn-outline-light btn-sm ms-3';
+            } else {
+                elements.connectionStatus.className = 'status-indicator status-offline';
+                elements.connectionText.textContent = '未連接';
+                elements.connectBtn.innerHTML = '<i class="fas fa-plug me-1"></i>連接';
+                elements.connectBtn.className = 'btn btn-outline-light btn-sm ms-3';
+            }
+            
+            // 更新按鈕狀態
+            const controlButtons = [
+                elements.startAutoProgramBtn, elements.stopAutoProgramBtn,
+                elements.clearFlow1Btn, elements.startFlow5Btn, elements.clearFlow5Btn,
+                elements.autoHandshakeBtn
+            ];
+            
+            controlButtons.forEach(btn => {
+                btn.disabled = !connected;
+            });
+        }
+        
+        // 更新系統狀態
+        function updateSystemStatus(status) {
+            // AutoProgram狀態
+            const autoProgramEnabled = status.auto_program_enabled;
+            
+            // Flow1完成狀態
+            if (status.flow1_complete) {
+                elements.flow1StatusBadge.className = 'badge bg-success';
+                elements.flow1StatusBadge.textContent = '已完成';
+            } else {
+                elements.flow1StatusBadge.className = 'badge bg-secondary';
+                elements.flow1StatusBadge.textContent = '未完成';
+            }
+            
+            // Flow5完成狀態
+            if (status.flow5_complete) {
+                elements.flow5StatusBadge.className = 'badge bg-success';
+                elements.flow5StatusBadge.textContent = '已完成';
+            } else {
+                elements.flow5StatusBadge.className = 'badge bg-secondary';
+                elements.flow5StatusBadge.textContent = '未完成';
+            }
+            
+            // 自動供料狀態
+            updateFeedingStatus(status.feeding_process_status);
+            
+            // VP和Flow4狀態
+            elements.vpVibrationStatus.textContent = status.vp_vibration_status;
+            elements.flow4Status.textContent = status.flow4_control;
+            elements.cgStatus.textContent = status.cg_status;
+            
+            // CG檢測結果
+            elements['cgFCount'].textContent = status.cg_f_count;
+            elements['cgBCount'].textContent = status.cg_b_count;
+            elements['stackCount'].textContent = status.stack_count;
+            elements['totalDetections'].textContent = status.total_detections;
+            
+            // 當前運動Flow
+            updateCurrentFlow(status.current_motion_flow);
+            
+            // 運動進度
+            updateMotionProgress(status);
+            
+            // 統計資訊
+            elements['cycleCount'].textContent = status.cycle_count;
+            elements['cgFFoundCount'].textContent = status.cg_f_found_count;
+            elements['vpVibrationCount'].textContent = status.vp_vibration_count;
+            elements['flow4TriggerCount'].textContent = status.flow4_trigger_count;
+            elements['flow1TriggerCount'].textContent = status.flow1_trigger_count;
+            elements['flow5CompleteCount'].textContent = status.flow5_complete_count;
+            elements['flow4ConsecutiveCount'].textContent = status.flow4_consecutive_count;
+            elements['vpEmptyDetectionCount'].textContent = status.vp_empty_detection_count;
+        }
+        
+        // 更新自動供料狀態
+        function updateFeedingStatus(status) {
+            elements.feedingStatus.textContent = status;
+            
+            // 移除所有狀態類
+            elements.feedingStatus.className = 'feeding-status';
+            
+            // 根據狀態添加對應類
+            if (status.includes('停止') || status.includes('未啟動')) {
+                elements.feedingStatus.classList.add('feeding-stop');
+            } else if (status.includes('震動')) {
+                elements.feedingStatus.classList.add('feeding-vibrating');
+            } else if (status.includes('供應')) {
+                elements.feedingStatus.classList.add('feeding-feeding');
+            } else if (status.includes('辨識')) {
+                elements.feedingStatus.classList.add('feeding-detecting');
+            } else {
+                elements.feedingStatus.classList.add('feeding-running');
+            }
+        }
+        
+        // 更新當前Flow
+        function updateCurrentFlow(flowId) {
+            const flowNames = {
+                0: '無',
+                1: 'Flow1',
+                2: 'Flow2',
+                5: 'Flow5'
+            };
+            
+            const flowName = flowNames[flowId] || `Flow${flowId}`;
+            elements.currentFlowBadge.textContent = flowName;
+            
+            if (flowId === 0) {
+                elements.currentFlowBadge.className = 'badge bg-secondary';
+            } else if (flowId === 1) {
+                elements.currentFlowBadge.className = 'badge bg-success';
+            } else if (flowId === 5) {
+                elements.currentFlowBadge.className = 'badge bg-primary';
+            } else {
+                elements.currentFlowBadge.className = 'badge bg-info';
+            }
+        }
+        
+        // 更新運動進度
+        function updateMotionProgress(status) {
+            const currentFlow = status.current_motion_flow;
+            const progress = status.motion_progress;
+            
+            // 重置所有進度條
+            elements.flow1ProgressBar.style.width = '0%';
+            elements.flow1ProgressText.textContent = '0%';
+            elements.flow5ProgressBar.style.width = '0%';
+            elements.flow5ProgressText.textContent = '0%';
+            
+            // 根據當前Flow更新對應進度條
+            if (currentFlow === 1) {
+                elements.flow1ProgressBar.style.width = `${progress}%`;
+                elements.flow1ProgressText.textContent = `${progress}%`;
+            } else if (currentFlow === 5) {
+                elements.flow5ProgressBar.style.width = `${progress}%`;
+                elements.flow5ProgressText.textContent = `${progress}%`;
+            }
+        }
+        
+        // 日誌功能
+        function logMessage(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `
+                <div class="timestamp">[${timestamp}]</div>
+                <div>${message}</div>
+            `;
+            
+            elements.logContainer.appendChild(logEntry);
+            elements.logContainer.scrollTop = elements.logContainer.scrollHeight;
+        }
+        
+        function clearLog() {
+            elements.logContainer.innerHTML = `
+                <div class="timestamp">[日誌已清除]</div>
+                <div>操作日誌已清空</div>
+            `;
+        }
+    </script>
+</body>
+</html>

@@ -375,7 +375,7 @@ class RealRobotController:
         self.is_connected = False
         self.dashboard_api = None
         self.move_api = None
-        self.global_speed = 100
+        self.global_speed = 20
         
     def _parse_api_response(self, response: str) -> bool:
         """解析API響應"""
@@ -1185,7 +1185,7 @@ class DobotConcurrentController:
                 "ip": "192.168.1.6",
                 "dashboard_port": 29999,
                 "move_port": 30003,
-                "default_speed": 50,
+                "default_speed": 20,
                 "default_acceleration": 50,
                 "enable_collision_detection": True,
                 "collision_level": 3
@@ -1202,7 +1202,7 @@ class DobotConcurrentController:
                 "base_address": 520,
                 "status_address": 500,
                 "default_force": 50,
-                "default_speed": 80
+                "default_speed": 100
             },
             "vision": {
                 "ccd1_base_address": 200,

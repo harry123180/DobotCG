@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Optimized Camera Manager - 高度整合海康SDK的優化相機管理器
-基於海康威視SDK的高性能多相機管理系統
+Optimized Camera Manager - 專為頻寬控制和最新幀獲取優化
+基於海康威視SDK的高性能相機管理系統
+特點：200Mbps頻寬限制、5FPS、無緩存最新幀模式
 """
 
 import threading
 import time
-import queue
 import socket
 import struct
 import numpy as np
@@ -15,7 +15,6 @@ from enum import Enum
 from ctypes import *
 from dataclasses import dataclass
 import logging
-from concurrent.futures import ThreadPoolExecutor
 
 # 導入海康SDK
 try:
@@ -35,7 +34,6 @@ class CameraState(Enum):
     CONNECTED = "connected"
     STREAMING = "streaming"
     ERROR = "error"
-    PAUSED = "paused"
 
 
 class CameraMode(Enum):
@@ -58,21 +56,30 @@ class PixelFormat(Enum):
 
 @dataclass
 class CameraConfig:
-    """相機配置類"""
+    """相機配置類 - 針對頻寬控制優化"""
     name: str
     ip: str
     port: int = 0
-    timeout: int = 3000
-    exposure_time: float = 20000.0  # 微秒
+    timeout: int = 5000
+    exposure_time: float = 50000.0  # 增加曝光時間配合低FPS
     gain: float = 0.0
-    frame_rate: float = 30.0
+    frame_rate: float = 5.0  # 固定5FPS
     pixel_format: PixelFormat = PixelFormat.BAYER_GR8
     width: int = 2592
     height: int = 1944
-    packet_size: int = 8192
-    auto_reconnect: bool = True
-    buffer_count: int = 5
+    
+    # 頻寬控制相關參數
+    bandwidth_limit_mbps: int = 200  # 200Mbps頻寬限制
+    packet_size: int = 1500  # 降低包大小減少網路負載
+    packet_delay: int = 5000  # 包間延遲 (ticks)
+    enable_bandwidth_control: bool = True
+    
+    # 最新幀模式 - 關閉緩存
+    buffer_count: int = 1  # 最小緩存
+    use_latest_frame_only: bool = True  # 只保留最新幀
+    
     trigger_mode: CameraMode = CameraMode.CONTINUOUS
+    auto_reconnect: bool = True
 
 
 @dataclass
@@ -88,70 +95,8 @@ class FrameData:
     capture_time: float = 0.0
 
 
-class CameraPerformanceMonitor:
-    """相機性能監控器"""
-    
-    def __init__(self, window_size: int = 100):
-        self.window_size = window_size
-        self.frame_times = []
-        self.capture_times = []
-        self.error_count = 0
-        self.total_frames = 0
-        self.start_time = time.time()
-        self._lock = threading.Lock()
-    
-    def record_frame(self, capture_time: float):
-        """記錄幀數據"""
-        with self._lock:
-            current_time = time.time()
-            self.frame_times.append(current_time)
-            self.capture_times.append(capture_time)
-            self.total_frames += 1
-            
-            # 保持窗口大小
-            if len(self.frame_times) > self.window_size:
-                self.frame_times.pop(0)
-                self.capture_times.pop(0)
-    
-    def record_error(self):
-        """記錄錯誤"""
-        with self._lock:
-            self.error_count += 1
-    
-    def get_fps(self) -> float:
-        """獲取當前FPS"""
-        with self._lock:
-            if len(self.frame_times) < 2:
-                return 0.0
-            
-            time_span = self.frame_times[-1] - self.frame_times[0]
-            if time_span <= 0:
-                return 0.0
-            
-            return (len(self.frame_times) - 1) / time_span
-    
-    def get_average_capture_time(self) -> float:
-        """獲取平均捕獲時間"""
-        with self._lock:
-            if not self.capture_times:
-                return 0.0
-            return sum(self.capture_times) / len(self.capture_times)
-    
-    def get_statistics(self) -> Dict[str, Any]:
-        """獲取統計信息"""
-        with self._lock:
-            return {
-                'fps': self.get_fps(),
-                'avg_capture_time': self.get_average_capture_time(),
-                'total_frames': self.total_frames,
-                'error_count': self.error_count,
-                'error_rate': self.error_count / max(1, self.total_frames),
-                'uptime': time.time() - self.start_time
-            }
-
-
 class OptimizedCamera:
-    """優化的單相機管理類"""
+    """優化的單相機管理類 - 頻寬控制版"""
     
     def __init__(self, config: CameraConfig, logger: logging.Logger):
         self.config = config
@@ -165,34 +110,31 @@ class OptimizedCamera:
         # 狀態管理
         self.state = CameraState.DISCONNECTED
         self.is_streaming = False
-        self.last_frame_time = 0.0
         
         # 線程同步
         self._lock = threading.RLock()
-        self._frame_event = threading.Event()
         
-        # 幀緩存管理
-        self.frame_buffer = queue.Queue(maxsize=config.buffer_count)
+        # 最新幀管理 - 無緩存模式
         self.latest_frame: Optional[FrameData] = None
-        
-        # 性能監控
-        self.performance = CameraPerformanceMonitor()
+        self.frame_update_time: float = 0.0
         
         # 回調函數
         self.frame_callback: Optional[Callable] = None
         self.error_callback: Optional[Callable] = None
-        
-        # 自動重連
-        self.reconnect_thread: Optional[threading.Thread] = None
-        self.should_reconnect = False
         
         # 統計信息
         self.stats = {
             'frames_captured': 0,
             'frames_dropped': 0,
             'connection_attempts': 0,
-            'last_error': None
+            'last_error': None,
+            'average_fps': 0.0,
+            'bandwidth_usage_mbps': 0.0
         }
+        
+        # FPS計算
+        self.fps_counter = []
+        self.fps_window_size = 10
     
     def connect(self) -> bool:
         """連接相機"""
@@ -218,14 +160,14 @@ class OptimizedCamera:
                 if ret != MV_OK:
                     raise Exception(f"打開設備失敗: 0x{ret:08x}")
                 
-                # 優化網絡設置
-                self._optimize_network_settings()
+                # 應用頻寬控制設定
+                self._apply_bandwidth_control()
                 
                 # 設置相機參數
                 self._configure_camera()
                 
                 self.state = CameraState.CONNECTED
-                self.logger.info(f"相機 {self.name} 連接成功")
+                self.logger.info(f"相機 {self.name} 連接成功 - 頻寬限制: {self.config.bandwidth_limit_mbps}Mbps")
                 return True
                 
             except Exception as e:
@@ -259,58 +201,134 @@ class OptimizedCamera:
         
         return False
     
-    def _optimize_network_settings(self):
-        """優化網絡設置"""
+    def _apply_bandwidth_control(self):
+        """應用頻寬控制設定 - 200Mbps限制"""
         try:
-            # 設置最佳包大小
-            optimal_packet_size = self.camera.MV_CC_GetOptimalPacketSize()
-            if optimal_packet_size > 0:
-                packet_size = min(optimal_packet_size, self.config.packet_size)
-                ret = self.camera.MV_CC_SetIntValue("GevSCPSPacketSize", packet_size)
+            self.logger.info(f"開始配置頻寬控制: {self.config.bandwidth_limit_mbps}Mbps")
+            
+            # 1. 設置包大小 - 較小的包大小有助於頻寬控制
+            ret = self.camera.MV_CC_SetIntValue("GevSCPSPacketSize", self.config.packet_size)
+            if ret == MV_OK:
+                self.logger.info(f"✓ 設置包大小: {self.config.packet_size} bytes")
+            else:
+                self.logger.warning(f"✗ 設置包大小失敗: 0x{ret:08x}")
+            
+            # 2. 設置包間延遲 - 主要頻寬控制手段
+            if self.config.packet_delay > 0:
+                ret = self.camera.MV_CC_SetIntValue("GevSCPD", self.config.packet_delay)
                 if ret == MV_OK:
-                    self.logger.debug(f"設置包大小: {packet_size}")
+                    self.logger.info(f"✓ 設置包間延遲: {self.config.packet_delay} ticks")
+                else:
+                    self.logger.warning(f"✗ 設置包間延遲失敗: 0x{ret:08x}")
             
-            # 設置重傳參數
-            self.camera.MV_GIGE_SetResend(1, 10, 50)  # 啟用重傳，10%重傳率，50ms超時
+            # 3. 計算並設置適當的幀率以滿足頻寬限制
+            max_fps_for_bandwidth = self._calculate_max_fps_for_bandwidth()
+            actual_fps = min(self.config.frame_rate, max_fps_for_bandwidth)
             
-            # 設置GVSP超時
-            self.camera.MV_GIGE_SetGvspTimeout(self.config.timeout)
+            self.logger.info(f"頻寬計算: 最大FPS={max_fps_for_bandwidth:.2f}, 實際FPS={actual_fps:.2f}")
+            
+            # 4. 設置重傳參數 - 優化網路穩定性
+            ret = self.camera.MV_GIGE_SetResend(1, 5, 100)  # 啟用重傳，5%重傳率，100ms超時
+            if ret == MV_OK:
+                self.logger.info("✓ 重傳參數設置成功")
+            
+            # 5. 設置GVSP超時
+            ret = self.camera.MV_GIGE_SetGvspTimeout(self.config.timeout)
+            if ret == MV_OK:
+                self.logger.info(f"✓ GVSP超時設置: {self.config.timeout}ms")
+            
+            # 6. 嘗試直接設置頻寬限制 (某些型號支援)
+            try:
+                bandwidth_bytes_per_sec = self.config.bandwidth_limit_mbps * 125000  # Mbps to Bytes/s
+                ret = self.camera.MV_CC_SetIntValue("GevSCBWA", bandwidth_bytes_per_sec)
+                if ret == MV_OK:
+                    self.logger.info(f"✓ 直接頻寬限制設置成功: {self.config.bandwidth_limit_mbps}Mbps")
+                else:
+                    self.logger.info("○ 設備不支援直接頻寬限制，使用其他方法控制")
+            except Exception as e:
+                self.logger.debug(f"直接頻寬限制嘗試失敗: {e}")
+            
+            self.logger.info("頻寬控制配置完成")
             
         except Exception as e:
-            self.logger.warning(f"優化網絡設置失敗: {e}")
+            self.logger.error(f"頻寬控制配置失敗: {e}")
+    
+    def _calculate_max_fps_for_bandwidth(self) -> float:
+        """根據頻寬限制計算最大幀率"""
+        # 計算單幀數據量 (bytes)
+        bytes_per_pixel = 1  # BAYER_GR8 = 1 byte per pixel
+        frame_size_bytes = self.config.width * self.config.height * bytes_per_pixel
+        
+        # 考慮網路開銷 (大約20%額外開銷)
+        frame_size_with_overhead = frame_size_bytes * 1.2
+        
+        # 計算頻寬限制下的最大FPS
+        bandwidth_bytes_per_sec = self.config.bandwidth_limit_mbps * 125000  # Mbps to Bytes/s
+        max_fps = bandwidth_bytes_per_sec / frame_size_with_overhead
+        
+        self.logger.debug(f"頻寬計算: 幀大小={frame_size_bytes/1024/1024:.2f}MB, 最大FPS={max_fps:.2f}")
+        
+        return max_fps
     
     def _configure_camera(self):
         """配置相機參數"""
         try:
             # 設置圖像尺寸
-            self.camera.MV_CC_SetIntValue("Width", self.config.width)
-            self.camera.MV_CC_SetIntValue("Height", self.config.height)
+            ret = self.camera.MV_CC_SetIntValue("Width", self.config.width)
+            if ret != MV_OK:
+                self.logger.warning(f"設置寬度失敗: 0x{ret:08x}")
+            
+            ret = self.camera.MV_CC_SetIntValue("Height", self.config.height)
+            if ret != MV_OK:
+                self.logger.warning(f"設置高度失敗: 0x{ret:08x}")
             
             # 設置像素格式
-            self.camera.MV_CC_SetEnumValue("PixelFormat", self.config.pixel_format.value)
+            ret = self.camera.MV_CC_SetEnumValue("PixelFormat", self.config.pixel_format.value)
+            if ret != MV_OK:
+                self.logger.warning(f"設置像素格式失敗: 0x{ret:08x}")
             
             # 設置曝光參數
-            self.camera.MV_CC_SetEnumValue("ExposureAuto", 0)  # 關閉自動曝光
-            self.camera.MV_CC_SetFloatValue("ExposureTime", self.config.exposure_time)
+            ret = self.camera.MV_CC_SetEnumValue("ExposureAuto", 0)  # 關閉自動曝光
+            if ret == MV_OK:
+                ret = self.camera.MV_CC_SetFloatValue("ExposureTime", self.config.exposure_time)
+                if ret == MV_OK:
+                    self.logger.info(f"✓ 曝光時間設置: {self.config.exposure_time}μs")
             
             # 設置增益
-            self.camera.MV_CC_SetFloatValue("Gain", self.config.gain)
+            ret = self.camera.MV_CC_SetFloatValue("Gain", self.config.gain)
+            if ret == MV_OK:
+                self.logger.info(f"✓ 增益設置: {self.config.gain}")
             
-            # 設置幀率
-            self.camera.MV_CC_SetBoolValue("AcquisitionFrameRateEnable", True)
-            self.camera.MV_CC_SetFloatValue("AcquisitionFrameRate", self.config.frame_rate)
+            # 設置幀率 - 關鍵設定
+            ret = self.camera.MV_CC_SetBoolValue("AcquisitionFrameRateEnable", True)
+            if ret == MV_OK:
+                ret = self.camera.MV_CC_SetFloatValue("AcquisitionFrameRate", self.config.frame_rate)
+                if ret == MV_OK:
+                    self.logger.info(f"✓ 幀率設置: {self.config.frame_rate} FPS")
+                else:
+                    self.logger.warning(f"✗ 幀率設置失敗: 0x{ret:08x}")
             
             # 設置觸發模式
             if self.config.trigger_mode == CameraMode.CONTINUOUS:
-                self.camera.MV_CC_SetEnumValue("TriggerMode", 0)
+                ret = self.camera.MV_CC_SetEnumValue("TriggerMode", 0)
+                if ret == MV_OK:
+                    self.logger.info("✓ 連續採集模式")
             else:
                 self.camera.MV_CC_SetEnumValue("TriggerMode", 1)
                 self.camera.MV_CC_SetEnumValue("TriggerSource", 7)  # 軟觸發
+                self.logger.info("✓ 觸發模式")
             
-            # 設置圖像緩存
-            self.camera.MV_CC_SetImageNodeNum(self.config.buffer_count)
+            # 設置最小緩存 - 最新幀模式
+            ret = self.camera.MV_CC_SetImageNodeNum(self.config.buffer_count)
+            if ret == MV_OK:
+                self.logger.info(f"✓ 緩存節點: {self.config.buffer_count} (最新幀模式)")
             
-            self.logger.debug(f"相機 {self.name} 參數配置完成")
+            # 設置抓取策略 - 總是獲取最新幀
+            ret = self.camera.MV_CC_SetGrabStrategy(MV_GrabStrategy_LatestImagesOnly)
+            if ret == MV_OK:
+                self.logger.info("✓ 抓取策略: 僅最新幀")
+            
+            self.logger.info(f"相機 {self.name} 參數配置完成")
             
         except Exception as e:
             raise Exception(f"配置相機參數失敗: {e}")
@@ -328,7 +346,7 @@ class OptimizedCamera:
                 
                 self.is_streaming = True
                 self.state = CameraState.STREAMING
-                self.logger.info(f"相機 {self.name} 開始串流")
+                self.logger.info(f"相機 {self.name} 開始串流 - {self.config.frame_rate}FPS")
                 return True
                 
             except Exception as e:
@@ -357,8 +375,8 @@ class OptimizedCamera:
                 self.logger.error(f"相機 {self.name} 停止串流失敗: {e}")
                 return False
     
-    def capture_frame(self, timeout: int = None) -> Optional[FrameData]:
-        """捕獲單幀"""
+    def capture_latest_frame(self, timeout: int = None) -> Optional[FrameData]:
+        """捕獲最新幀 - 無緩存模式"""
         if not self.is_streaming:
             return None
         
@@ -368,6 +386,9 @@ class OptimizedCamera:
         capture_start = time.time()
         
         try:
+            # 清除舊的緩存數據，確保獲取最新幀
+            self.camera.MV_CC_ClearImageBuffer()
+            
             # 使用GetImageBuffer獲取圖像
             frame_out = MV_FRAME_OUT()
             memset(byref(frame_out), 0, sizeof(frame_out))
@@ -411,20 +432,12 @@ class OptimizedCamera:
                 
                 # 更新統計
                 self.stats['frames_captured'] += 1
-                self.performance.record_frame(capture_time)
-                self.latest_frame = frame_data
+                self._update_fps_stats()
+                self._calculate_bandwidth_usage(frame_data)
                 
-                # 更新幀緩存
-                try:
-                    self.frame_buffer.put_nowait(frame_data)
-                except queue.Full:
-                    # 緩存滿，丟棄最舊的幀
-                    try:
-                        self.frame_buffer.get_nowait()
-                        self.frame_buffer.put_nowait(frame_data)
-                        self.stats['frames_dropped'] += 1
-                    except queue.Empty:
-                        pass
+                # 更新最新幀
+                self.latest_frame = frame_data
+                self.frame_update_time = time.time()
                 
                 # 調用回調
                 if self.frame_callback:
@@ -437,10 +450,39 @@ class OptimizedCamera:
                 self.camera.MV_CC_FreeImageBuffer(frame_out)
                 
         except Exception as e:
-            self.performance.record_error()
             self.stats['last_error'] = str(e)
             self.logger.error(f"相機 {self.name} 捕獲幀失敗: {e}")
             return None
+    
+    def get_latest_frame(self) -> Optional[FrameData]:
+        """獲取最新幀（無等待）"""
+        return self.latest_frame
+    
+    def get_latest_image(self) -> Optional[np.ndarray]:
+        """獲取最新圖像數據"""
+        frame = self.get_latest_frame()
+        return frame.data if frame else None
+    
+    def _update_fps_stats(self):
+        """更新FPS統計"""
+        current_time = time.time()
+        self.fps_counter.append(current_time)
+        
+        # 保持窗口大小
+        if len(self.fps_counter) > self.fps_window_size:
+            self.fps_counter.pop(0)
+        
+        # 計算FPS
+        if len(self.fps_counter) >= 2:
+            time_span = self.fps_counter[-1] - self.fps_counter[0]
+            if time_span > 0:
+                self.stats['average_fps'] = (len(self.fps_counter) - 1) / time_span
+    
+    def _calculate_bandwidth_usage(self, frame_data: FrameData):
+        """計算頻寬使用量"""
+        frame_size_mb = frame_data.data.nbytes / (1024 * 1024)
+        fps = self.stats.get('average_fps', 0)
+        self.stats['bandwidth_usage_mbps'] = frame_size_mb * fps * 8  # 轉換為Mbps
     
     def trigger_software(self) -> bool:
         """軟觸發"""
@@ -454,24 +496,10 @@ class OptimizedCamera:
             self.logger.error(f"相機 {self.name} 軟觸發失敗: {e}")
             return False
     
-    def get_latest_frame(self) -> Optional[FrameData]:
-        """獲取最新幀"""
-        return self.latest_frame
-    
-    def get_buffered_frame(self, timeout: float = 0.1) -> Optional[FrameData]:
-        """從緩存獲取幀"""
-        try:
-            return self.frame_buffer.get(timeout=timeout)
-        except queue.Empty:
-            return None
-    
     def disconnect(self):
         """斷開連接"""
         with self._lock:
             try:
-                # 停止自動重連
-                self.should_reconnect = False
-                
                 # 停止串流
                 if self.is_streaming:
                     self.stop_streaming()
@@ -491,19 +519,23 @@ class OptimizedCamera:
     
     def get_statistics(self) -> Dict[str, Any]:
         """獲取統計信息"""
-        perf_stats = self.performance.get_statistics()
         return {
             'name': self.name,
             'state': self.state.value,
             'is_streaming': self.is_streaming,
-            'config': self.config.__dict__,
+            'config': {
+                'ip': self.config.ip,
+                'frame_rate': self.config.frame_rate,
+                'bandwidth_limit_mbps': self.config.bandwidth_limit_mbps,
+                'resolution': f"{self.config.width}x{self.config.height}"
+            },
             'stats': self.stats,
-            'performance': perf_stats
+            'latest_frame_age': time.time() - self.frame_update_time if self.frame_update_time else None
         }
 
 
 class OptimizedCameraManager:
-    """優化的相機管理器主類"""
+    """優化的相機管理器主類 - 頻寬控制版"""
     
     def __init__(self, config_dict: Dict[str, CameraConfig] = None, 
                  log_level: int = logging.INFO):
@@ -519,19 +551,11 @@ class OptimizedCameraManager:
         self.cameras: Dict[str, OptimizedCamera] = {}
         self.config_dict = config_dict or {}
         
-        # 線程管理
-        self.executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="CamMgr")
-        self._shutdown_flag = threading.Event()
-        
         # 全局回調
         self.global_frame_callback: Optional[Callable] = None
         self.global_error_callback: Optional[Callable] = None
         
-        # 監控線程
-        self.monitor_thread: Optional[threading.Thread] = None
-        self.start_monitoring = False
-        
-        self.logger.info("相機管理器初始化完成")
+        self.logger.info("相機管理器初始化完成 - 頻寬控制版")
     
     def _setup_logger(self, log_level: int) -> logging.Logger:
         """設置日誌"""
@@ -566,31 +590,11 @@ class OptimizedCameraManager:
             self.cameras[name] = camera
             self.config_dict[name] = config
             
-            self.logger.info(f"添加相機 {name}")
+            self.logger.info(f"添加相機 {name} - IP: {config.ip}, 頻寬: {config.bandwidth_limit_mbps}Mbps")
             return True
             
         except Exception as e:
             self.logger.error(f"添加相機 {name} 失敗: {e}")
-            return False
-    
-    def remove_camera(self, name: str) -> bool:
-        """移除相機"""
-        if name not in self.cameras:
-            return False
-        
-        try:
-            camera = self.cameras[name]
-            camera.disconnect()
-            del self.cameras[name]
-            
-            if name in self.config_dict:
-                del self.config_dict[name]
-            
-            self.logger.info(f"移除相機 {name}")
-            return True
-            
-        except Exception as e:
-            self.logger.error(f"移除相機 {name} 失敗: {e}")
             return False
     
     def connect_camera(self, name: str) -> bool:
@@ -605,20 +609,9 @@ class OptimizedCameraManager:
         """連接所有相機"""
         self.logger.info("開始連接所有相機...")
         
-        # 並行連接
-        futures = {}
-        for name in self.cameras:
-            future = self.executor.submit(self.connect_camera, name)
-            futures[name] = future
-        
-        # 收集結果
         results = {}
-        for name, future in futures.items():
-            try:
-                results[name] = future.result(timeout=10)
-            except Exception as e:
-                self.logger.error(f"連接相機 {name} 超時: {e}")
-                results[name] = False
+        for name in self.cameras:
+            results[name] = self.connect_camera(name)
         
         success_count = sum(results.values())
         self.logger.info(f"相機連接完成: {success_count}/{len(self.cameras)} 成功")
@@ -653,33 +646,32 @@ class OptimizedCameraManager:
         
         return results
     
-    def get_image(self, camera_name: str, timeout: int = None) -> Optional[np.ndarray]:
-        """獲取指定相機的圖像"""
+    def get_latest_image(self, camera_name: str) -> Optional[np.ndarray]:
+        """獲取指定相機的最新圖像"""
         if camera_name not in self.cameras:
             self.logger.error(f"相機 {camera_name} 不存在")
             return None
         
-        camera = self.cameras[camera_name]
-        frame_data = camera.capture_frame(timeout)
-        
-        if frame_data:
-            return frame_data.data
-        return None
+        return self.cameras[camera_name].get_latest_image()
     
-    def get_image_data(self, camera_name: str, timeout: int = None) -> Optional[FrameData]:
-        """獲取指定相機的完整幀數據"""
+    def capture_new_frame(self, camera_name: str, timeout: int = None) -> Optional[FrameData]:
+        """主動捕獲新幀"""
         if camera_name not in self.cameras:
             return None
         
-        return self.cameras[camera_name].capture_frame(timeout)
+        return self.cameras[camera_name].capture_latest_frame(timeout)
     
-    def get_latest_image(self, camera_name: str) -> Optional[np.ndarray]:
-        """獲取最新圖像（無等待）"""
-        if camera_name not in self.cameras:
-            return None
-        
-        frame_data = self.cameras[camera_name].get_latest_frame()
-        return frame_data.data if frame_data else None
+    def get_camera_statistics(self, camera_name: str = None) -> Dict[str, Dict[str, Any]]:
+        """獲取相機統計信息"""
+        if camera_name:
+            if camera_name in self.cameras:
+                return {camera_name: self.cameras[camera_name].get_statistics()}
+            return {}
+        else:
+            stats = {}
+            for name, camera in self.cameras.items():
+                stats[name] = camera.get_statistics()
+            return stats
     
     def trigger_software(self, camera_names: List[str] = None) -> Dict[str, bool]:
         """軟觸發指定相機"""
@@ -696,43 +688,9 @@ class OptimizedCameraManager:
         
         return results
     
-    def get_all_statistics(self) -> Dict[str, Dict[str, Any]]:
-        """獲取所有相機統計信息"""
-        stats = {}
-        for name, camera in self.cameras.items():
-            stats[name] = camera.get_statistics()
-        return stats
-    
-    def get_camera_list(self) -> List[str]:
-        """獲取相機名稱列表"""
-        return list(self.cameras.keys())
-    
-    def is_camera_streaming(self, camera_name: str) -> bool:
-        """檢查相機是否在串流"""
-        if camera_name not in self.cameras:
-            return False
-        return self.cameras[camera_name].is_streaming
-    
-    def set_global_frame_callback(self, callback: Callable):
-        """設置全局幀回調"""
-        self.global_frame_callback = callback
-        for camera in self.cameras.values():
-            camera.frame_callback = callback
-    
-    def set_global_error_callback(self, callback: Callable):
-        """設置全局錯誤回調"""
-        self.global_error_callback = callback
-        for camera in self.cameras.values():
-            camera.error_callback = callback
-    
     def shutdown(self):
         """關閉管理器"""
         self.logger.info("開始關閉相機管理器...")
-        
-        # 停止監控
-        self._shutdown_flag.set()
-        if self.monitor_thread and self.monitor_thread.is_alive():
-            self.monitor_thread.join(timeout=2)
         
         # 斷開所有相機
         for name, camera in self.cameras.items():
@@ -740,9 +698,6 @@ class OptimizedCameraManager:
                 camera.disconnect()
             except Exception as e:
                 self.logger.error(f"斷開相機 {name} 失敗: {e}")
-        
-        # 關閉線程池
-        self.executor.shutdown(wait=True, timeout=5)
         
         # 反初始化SDK
         try:
@@ -764,158 +719,83 @@ class OptimizedCameraManager:
 # 全局管理器實例
 _global_manager: Optional[OptimizedCameraManager] = None
 
-# 默認配置
+# 默認配置 - 200Mbps, 5FPS
 CAMERA_CONFIG = {
     "cam_1": CameraConfig(
         name="cam_1",
         ip="192.168.1.8",
-        exposure_time=20000.0,
-        gain=0.0,
-        frame_rate=30.0
-    ),
-    "cam_2": CameraConfig(
-        name="cam_2", 
-        ip="192.168.1.9",
-        exposure_time=20000.0,
-        gain=0.0,
-        frame_rate=30.0
-    ),
-    "cam_3": CameraConfig(
-        name="cam_3",
-        ip="192.168.1.10", 
-        exposure_time=20000.0,
-        gain=0.0,
-        frame_rate=30.0
+        bandwidth_limit_mbps=200,
+        frame_rate=5.0,
+        exposure_time=50000.0,
+        use_latest_frame_only=True
     ),
 }
 
 
-def initialize_all_cameras(config_dict: Dict[str, CameraConfig] = None) -> bool:
-    """初始化所有相機（兼容原API）"""
+def initialize_camera(ip: str = "192.168.1.8", name: str = "cam_1") -> bool:
+    """初始化單個相機（兼容原API）"""
     global _global_manager
     
-    if _global_manager is not None:
-        return True
-    
     try:
-        if config_dict is None:
-            config_dict = CAMERA_CONFIG
+        config = CameraConfig(
+            name=name,
+            ip=ip,
+            bandwidth_limit_mbps=200,
+            frame_rate=5.0,
+            exposure_time=50000.0,
+            use_latest_frame_only=True
+        )
         
-        _global_manager = OptimizedCameraManager(config_dict)
+        _global_manager = OptimizedCameraManager()
+        _global_manager.add_camera(name, config)
         
-        # 添加所有相機
-        for name, config in config_dict.items():
-            _global_manager.add_camera(name, config)
+        # 連接並開始串流
+        if _global_manager.connect_camera(name):
+            results = _global_manager.start_streaming([name])
+            return results.get(name, False)
         
-        # 連接所有相機
-        results = _global_manager.connect_all_cameras()
-        
-        # 開始串流
-        _global_manager.start_streaming()
-        
-        return all(results.values())
+        return False
         
     except Exception as e:
         print(f"初始化相機失敗: {e}")
         return False
 
 
-def get_image(camera_name: str) -> Optional[bytes]:
-    """獲取圖像數據（兼容原API）"""
+def get_latest_image(camera_name: str = "cam_1") -> Optional[np.ndarray]:
+    """獲取最新圖像（兼容原API）"""
     global _global_manager
     
     if _global_manager is None:
         raise RuntimeError("相機管理器未初始化")
     
-    image_data = _global_manager.get_image(camera_name)
-    if image_data is not None:
-        return image_data.tobytes()
-    return None
+    return _global_manager.get_latest_image(camera_name)
 
 
-def get_image_array(camera_name: str) -> Optional[np.ndarray]:
-    """獲取圖像數組"""
+def capture_new_image(camera_name: str = "cam_1") -> Optional[np.ndarray]:
+    """主動捕獲新圖像"""
     global _global_manager
     
     if _global_manager is None:
         raise RuntimeError("相機管理器未初始化")
     
-    return _global_manager.get_image(camera_name)
+    frame_data = _global_manager.capture_new_frame(camera_name)
+    return frame_data.data if frame_data else None
 
 
-def shutdown_all():
-    """關閉所有相機（兼容原API）"""
-    global _global_manager
-    
-    if _global_manager is not None:
-        _global_manager.shutdown()
-        _global_manager = None
-
-
-def get_manager() -> Optional[OptimizedCameraManager]:
-    """獲取全局管理器實例"""
-    return _global_manager
-
-
-def get_camera_statistics(camera_name: str = None) -> Dict:
+def get_camera_stats(camera_name: str = "cam_1") -> Dict:
     """獲取相機統計信息"""
     global _global_manager
     
     if _global_manager is None:
         return {}
     
-    if camera_name:
-        if camera_name in _global_manager.cameras:
-            return _global_manager.cameras[camera_name].get_statistics()
-        return {}
-    else:
-        return _global_manager.get_all_statistics()
+    return _global_manager.get_camera_statistics(camera_name)
 
 
-# ==================== 測試代碼 ====================
-
-if __name__ == "__main__":
-    # 測試配置
-    test_config = {
-        "test_cam": CameraConfig(
-            name="test_cam",
-            ip="192.168.1.8",  # 修改為您的相機IP
-            exposure_time=10000.0,
-            frame_rate=10.0,
-            trigger_mode=CameraMode.CONTINUOUS
-        )
-    }
+def shutdown_camera():
+    """關閉相機（兼容原API）"""
+    global _global_manager
     
-    print("🚀 測試優化相機管理器")
-    
-    # 創建管理器
-    with OptimizedCameraManager(test_config, logging.DEBUG) as manager:
-        # 添加相機
-        success = manager.add_camera("test_cam", test_config["test_cam"])
-        print(f"添加相機: {'成功' if success else '失敗'}")
-        
-        # 連接相機
-        results = manager.connect_all_cameras()
-        print(f"連接結果: {results}")
-        
-        if results.get("test_cam", False):
-            # 開始串流
-            stream_results = manager.start_streaming()
-            print(f"串流結果: {stream_results}")
-            
-            # 捕獲幾幀
-            for i in range(5):
-                frame_data = manager.get_image_data("test_cam")
-                if frame_data:
-                    print(f"幀 {i+1}: {frame_data.width}x{frame_data.height}, "
-                          f"捕獲耗時: {frame_data.capture_time:.3f}s")
-                else:
-                    print(f"幀 {i+1}: 捕獲失敗")
-                
-                time.sleep(0.1)
-            
-            # 獲取統計信息
-            stats = manager.get_all_statistics()
-            print(f"統計信息: {stats}")
-    
-    print("✅ 測試完成")
+    if _global_manager is not None:
+        _global_manager.shutdown()
+        _global_manager = None
