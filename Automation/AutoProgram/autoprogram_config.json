@@ -1,0 +1,17 @@
+{
+  "autoprogram": {
+    "coordination_interval": 0.2,
+    "auto_program_enabled": true,
+    "flow1_trigger_delay": 0.1,
+    "coords_confirm_delay": 0.1
+  },
+  "monitoring": {
+    "cg_f_check_interval": 0.1,
+    "flow5_check_interval": 0.2,
+    "status_update_interval": 1.0
+  },
+  "timing": {
+    "register_clear_delay": 0.05,
+    "flow1_response_timeout": 10.0
+  }
+}

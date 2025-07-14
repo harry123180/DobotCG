@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CG AutoProgram控制面板</title>
+    <title>AutoProgram控制面板 - CG版本</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
@@ -107,7 +107,7 @@
             font-size: 0.8rem;
         }
         
-        .feeding-status {
+        .autofeeding-status {
             font-size: 1.1rem;
             font-weight: 600;
             padding: 10px;
@@ -116,11 +116,33 @@
             margin-bottom: 15px;
         }
         
-        .feeding-stop { background-color: #f8d7da; color: #721c24; }
-        .feeding-running { background-color: #d4edda; color: #155724; }
-        .feeding-vibrating { background-color: #fff3cd; color: #856404; }
-        .feeding-feeding { background-color: #cce5ff; color: #004085; }
-        .feeding-detecting { background-color: #e2e3e5; color: #383d41; }
+        .autofeeding-stop { background-color: #f8d7da; color: #721c24; }
+        .autofeeding-running { background-color: #d4edda; color: #155724; }
+        .autofeeding-paused { background-color: #fff3cd; color: #856404; }
+        .autofeeding-detecting { background-color: #cce5ff; color: #004085; }
+        .autofeeding-vibrating { background-color: #e2e3e5; color: #383d41; }
+        
+        .prepare-done-true { 
+            background-color: #d4edda; 
+            color: #155724; 
+            border: 2px solid #c3e6cb; 
+        }
+        .prepare-done-false { 
+            background-color: #f8d7da; 
+            color: #721c24; 
+            border: 2px solid #f5c6cb; 
+        }
+        
+        .auto-program-enabled { 
+            background-color: #d1ecf1; 
+            color: #0c5460; 
+            border: 2px solid #bee5eb; 
+        }
+        .auto-program-disabled { 
+            background-color: #ffeaa7; 
+            color: #856404; 
+            border: 2px solid #ffeaa7; 
+        }
     </style>
 </head>
 <body>
@@ -132,7 +154,7 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h3 class="mb-0">
                             <i class="fas fa-robot me-2"></i>
-                            CG AutoProgram控制面板
+                            AutoProgram控制面板 - CG版本
                         </h3>
                         <div class="d-flex align-items-center">
                             <span class="status-indicator" id="connectionStatus"></span>
@@ -149,22 +171,38 @@
         <div class="row">
             <!-- 左側控制面板 -->
             <div class="col-lg-6">
-                <!-- CG AutoProgram流程控制 -->
+                <!-- AutoProgram系統控制 -->
                 <div class="card">
                     <div class="card-header">
-                        <i class="fas fa-play-circle me-2"></i>CG AutoProgram流程控制
+                        <i class="fas fa-play-circle me-2"></i>AutoProgram系統控制
                     </div>
                     <div class="card-body">
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-                            <button class="btn btn-success btn-custom me-md-2" id="startAutoProgramBtn">
-                                <i class="fas fa-play me-1"></i>啟動CG AutoProgram
-                            </button>
-                            <button class="btn btn-danger btn-custom" id="stopAutoProgramBtn">
-                                <i class="fas fa-stop me-1"></i>停止CG AutoProgram
-                            </button>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>系統啟動/停止</h6>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-success btn-custom" id="startSystemBtn">
+                                        <i class="fas fa-play me-1"></i>啟動系統
+                                    </button>
+                                    <button class="btn btn-danger btn-custom" id="stopSystemBtn">
+                                        <i class="fas fa-stop me-1"></i>停止系統
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>自動程序控制</h6>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-primary btn-custom" id="enableAutoProgramBtn">
+                                        <i class="fas fa-toggle-on me-1"></i>啟用自動程序
+                                    </button>
+                                    <button class="btn btn-warning btn-custom" id="disableAutoProgramBtn">
+                                        <i class="fas fa-toggle-off me-1"></i>停用自動程序
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="mt-3 text-center">
-                            <small class="text-muted">控制地址: 1350</small>
+                            <small class="text-muted">系統控制地址: 1320 | 自動程序控制地址: 1321</small>
                         </div>
                     </div>
                 </div>
@@ -177,22 +215,26 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6">
-                                <h6>Flow1完成狀態</h6>
+                                <h6>Dobot Flow1控制</h6>
                                 <div class="d-flex align-items-center mb-3">
                                     <span class="badge" id="flow1StatusBadge">未知</span>
-                                    <button class="btn btn-warning btn-sm ms-2" id="clearFlow1Btn">
-                                        <i class="fas fa-eraser me-1"></i>清除
+                                    <button class="btn btn-warning btn-sm ms-2" id="triggerDobotFlow1Btn">
+                                        <i class="fas fa-play me-1"></i>觸發
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm ms-1" id="clearFlow1CompleteBtn">
+                                        <i class="fas fa-eraser me-1"></i>清除完成
                                     </button>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <h6>Flow5控制</h6>
-                                <div class="d-grid gap-1">
-                                    <button class="btn btn-primary btn-sm" id="startFlow5Btn">
-                                        <i class="fas fa-play me-1"></i>觸發Flow5
+                                <h6>Dobot Flow5控制</h6>
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="badge" id="flow5StatusBadge">未知</span>
+                                    <button class="btn btn-success btn-sm ms-2" id="triggerDobotFlow5Btn">
+                                        <i class="fas fa-play me-1"></i>觸發
                                     </button>
-                                    <button class="btn btn-secondary btn-sm" id="clearFlow5Btn">
-                                        <i class="fas fa-times me-1"></i>清除Flow5
+                                    <button class="btn btn-secondary btn-sm ms-1" id="clearFlow5CompleteBtn">
+                                        <i class="fas fa-eraser me-1"></i>清除完成
                                     </button>
                                 </div>
                             </div>
@@ -202,49 +244,87 @@
                         
                         <div class="row">
                             <div class="col-md-6">
-                                <h6>Flow5完成狀態</h6>
-                                <span class="badge" id="flow5StatusBadge">未知</span>
+                                <h6>自動交握控制</h6>
+                                <div class="d-grid gap-1">
+                                    <button class="btn btn-primary btn-sm" id="autoHandshakeBtn">
+                                        <i class="fas fa-handshake me-1"></i>自動交握
+                                    </button>
+                                    <small class="text-muted">Flow1完成後自動觸發Flow5</small>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <hr>
-                        
-                        <div class="text-center">
-                            <button class="btn btn-info btn-custom" id="autoHandshakeBtn">
-                                <i class="fas fa-handshake me-1"></i>自動交握
-                            </button>
-                            <div class="mt-2">
-                                <small class="text-muted">自動執行: 確認Flow1完成→清除→觸發Flow5→等待執行→清除</small>
+                            <div class="col-md-6">
+                                <h6>錯誤處理</h6>
+                                <button class="btn btn-danger btn-sm" id="errorClearBtn">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>清除錯誤
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 自動供料狀態 -->
+                <!-- AutoFeeding交握控制 -->
                 <div class="card">
                     <div class="card-header">
-                        <i class="fas fa-industry me-2"></i>自動供料狀態
+                        <i class="fas fa-handshake me-2"></i>AutoFeeding交握控制
                     </div>
                     <div class="card-body">
-                        <div class="feeding-status" id="feedingStatus">系統停止</div>
-                        
                         <div class="row text-center">
                             <div class="col-4">
                                 <div class="stat-card">
-                                    <div class="stat-number" id="vpVibrationStatus">0</div>
-                                    <div class="stat-label">VP震動狀態</div>
+                                    <div class="stat-number" id="afCgFAvailableDirect">否</div>
+                                    <div class="stat-label">CG_F可用(940)</div>
                                 </div>
                             </div>
                             <div class="col-4">
                                 <div class="stat-card">
-                                    <div class="stat-number" id="flow4Status">0</div>
-                                    <div class="stat-label">直振供應狀態</div>
+                                    <div class="stat-number" id="afCoordsTaken">否</div>
+                                    <div class="stat-label">座標已讀取(945)</div>
                                 </div>
                             </div>
                             <div class="col-4">
+                                <button class="btn btn-info btn-custom" id="setCoordsTagenBtn">
+                                    <i class="fas fa-check me-1"></i>設置已讀取
+                                </button>
+                                <small class="text-muted d-block mt-1">手動設置945=1</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 目標座標顯示 -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-crosshairs me-2"></i>目標座標
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-center mb-3">AutoProgram複製座標 (1340-1343)</h6>
+                        <div class="row text-center">
+                            <div class="col-6">
                                 <div class="stat-card">
-                                    <div class="stat-number" id="cgStatus">0</div>
-                                    <div class="stat-label">CG狀態</div>
+                                    <div class="stat-number" id="targetX">0.0</div>
+                                    <div class="stat-label">目標X座標 (mm)</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="targetY">0.0</div>
+                                    <div class="stat-label">目標Y座標 (mm)</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h6 class="text-center mb-3 mt-4">AutoFeeding直接座標 (941-944)</h6>
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="targetXDirect">0.0</div>
+                                    <div class="stat-label">直接X座標 (mm)</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="targetYDirect">0.0</div>
+                                    <div class="stat-label">直接Y座標 (mm)</div>
                                 </div>
                             </div>
                         </div>
@@ -254,6 +334,75 @@
 
             <!-- 右側監控面板 -->
             <div class="col-lg-6">
+                <!-- 系統狀態 -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-tachometer-alt me-2"></i>系統狀態
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="systemStatus">停止</div>
+                                    <div class="stat-label">系統狀態</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-card" id="autoProgramStatusCard">
+                                    <div class="stat-number" id="autoProgramEnabled">未知</div>
+                                    <div class="stat-label">自動程序狀態</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="stat-card" id="prepareDoneCard">
+                                    <div class="stat-number" id="prepareDone">否</div>
+                                    <div class="stat-label">Prepare Done</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="errorCode">0</div>
+                                    <div class="stat-label">錯誤代碼</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AutoFeeding狀態 -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-industry me-2"></i>AutoFeeding狀態
+                    </div>
+                    <div class="card-body">
+                        <div class="autofeeding-status" id="autofeedingStatus">AutoFeeding模組停止</div>
+                        
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="afModuleStatus">0</div>
+                                    <div class="stat-label">模組狀態</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="afCgFAvailable">否</div>
+                                    <div class="stat-label">CG_F可用(AP)</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="flow5CompleteStatus">否</div>
+                                    <div class="stat-label">Flow5完成狀態</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- CG檢測結果 -->
                 <div class="card">
                     <div class="card-header">
@@ -289,82 +438,72 @@
                     </div>
                 </div>
 
-                <!-- 運動進度 -->
+                <!-- Dobot M1Pro狀態 -->
                 <div class="card">
                     <div class="card-header">
-                        <i class="fas fa-chart-line me-2"></i>運動進度監控
+                        <i class="fas fa-robot me-2"></i>Dobot M1Pro狀態
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <h6>當前運動Flow: <span class="badge bg-info" id="currentFlowBadge">無</span></h6>
+                            <h6>當前Flow: <span class="badge bg-info" id="currentFlowBadge">無</span></h6>
                         </div>
                         
                         <div class="mb-3">
                             <div class="d-flex justify-content-between mb-1">
-                                <span>Flow1進度</span>
-                                <span id="flow1ProgressText">0%</span>
+                                <span>運動進度</span>
+                                <span id="motionProgressText">0%</span>
                             </div>
                             <div class="progress">
-                                <div class="progress-bar bg-success" id="flow1ProgressBar" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between mb-1">
-                                <span>Flow5進度</span>
-                                <span id="flow5ProgressText">0%</span>
-                            </div>
-                            <div class="progress">
-                                <div class="progress-bar bg-primary" id="flow5ProgressBar" style="width: 0%"></div>
+                                <div class="progress-bar bg-primary" id="motionProgressBar" style="width: 0%"></div>
                             </div>
                         </div>
                         
                         <div class="row text-center">
-                            <div class="col-6">
+                            <div class="col-4">
                                 <div class="stat-card">
-                                    <div class="stat-number" id="flow1TriggerCount">0</div>
-                                    <div class="stat-label">Flow1觸發次數</div>
+                                    <div class="stat-number" id="dobotMotionStatus">0</div>
+                                    <div class="stat-label">運動狀態</div>
                                 </div>
                             </div>
-                            <div class="col-6">
+                            <div class="col-4">
                                 <div class="stat-card">
-                                    <div class="stat-number" id="flow5CompleteCount">0</div>
-                                    <div class="stat-label">Flow5完成次數</div>
+                                    <div class="stat-number" id="dobotFlow1Complete">否</div>
+                                    <div class="stat-label">Flow1完成</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="dobotFlow5Complete">否</div>
+                                    <div class="stat-label">Flow5完成</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 系統統計 -->
+                <!-- 協調統計 -->
                 <div class="card">
                     <div class="card-header">
-                        <i class="fas fa-chart-bar me-2"></i>系統統計
+                        <i class="fas fa-chart-bar me-2"></i>協調統計
                     </div>
                     <div class="card-body">
                         <div class="row text-center">
-                            <div class="col-3">
+                            <div class="col-4">
                                 <div class="stat-card">
-                                    <div class="stat-number" id="cycleCount">0</div>
-                                    <div class="stat-label">檢測週期</div>
+                                    <div class="stat-number" id="coordinationCycleCount">0</div>
+                                    <div class="stat-label">協調週期</div>
                                 </div>
                             </div>
-                            <div class="col-3">
+                            <div class="col-4">
                                 <div class="stat-card">
-                                    <div class="stat-number" id="cgFFoundCount">0</div>
-                                    <div class="stat-label">CG_F找到</div>
+                                    <div class="stat-number" id="flow1TriggerCount">0</div>
+                                    <div class="stat-label">Flow1觸發次數</div>
                                 </div>
                             </div>
-                            <div class="col-3">
+                            <div class="col-4">
                                 <div class="stat-card">
-                                    <div class="stat-number" id="vpVibrationCount">0</div>
-                                    <div class="stat-label">VP震動</div>
-                                </div>
-                            </div>
-                            <div class="col-3">
-                                <div class="stat-card">
-                                    <div class="stat-number" id="flow4TriggerCount">0</div>
-                                    <div class="stat-label">直振供應</div>
+                                    <div class="stat-number" id="flow5CompleteCount">0</div>
+                                    <div class="stat-label">Flow5完成次數</div>
                                 </div>
                             </div>
                         </div>
@@ -372,14 +511,14 @@
                         <div class="row text-center mt-3">
                             <div class="col-6">
                                 <div class="stat-card">
-                                    <div class="stat-number" id="flow4ConsecutiveCount">0</div>
-                                    <div class="stat-label">連續直振次數</div>
+                                    <div class="stat-number" id="cgFTakenCount">0</div>
+                                    <div class="stat-label">CG_F取得次數</div>
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="stat-card">
-                                    <div class="stat-number" id="vpEmptyDetectionCount">0</div>
-                                    <div class="stat-label">VP空檢測次數</div>
+                                    <div class="stat-number" id="vpStatus">0</div>
+                                    <div class="stat-label">VP模組狀態</div>
                                 </div>
                             </div>
                         </div>
@@ -401,7 +540,7 @@
                     <div class="card-body">
                         <div class="log-container" id="logContainer">
                             <div class="timestamp">[系統啟動]</div>
-                            <div>CG AutoProgram控制面板已載入，等待連接...</div>
+                            <div>AutoProgram控制面板已載入，等待連接...</div>
                         </div>
                     </div>
                 </div>
@@ -424,41 +563,67 @@
             connectionText: document.getElementById('connectionText'),
             connectBtn: document.getElementById('connectBtn'),
             
-            startAutoProgramBtn: document.getElementById('startAutoProgramBtn'),
-            stopAutoProgramBtn: document.getElementById('stopAutoProgramBtn'),
+            // 系統控制
+            startSystemBtn: document.getElementById('startSystemBtn'),
+            stopSystemBtn: document.getElementById('stopSystemBtn'),
+            enableAutoProgramBtn: document.getElementById('enableAutoProgramBtn'),
+            disableAutoProgramBtn: document.getElementById('disableAutoProgramBtn'),
             
-            flow1StatusBadge: document.getElementById('flow1StatusBadge'),
-            clearFlow1Btn: document.getElementById('clearFlow1Btn'),
-            flow5StatusBadge: document.getElementById('flow5StatusBadge'),
-            startFlow5Btn: document.getElementById('startFlow5Btn'),
-            clearFlow5Btn: document.getElementById('clearFlow5Btn'),
+            // Flow控制
+            triggerDobotFlow1Btn: document.getElementById('triggerDobotFlow1Btn'),
+            clearFlow1CompleteBtn: document.getElementById('clearFlow1CompleteBtn'),
+            triggerDobotFlow5Btn: document.getElementById('triggerDobotFlow5Btn'),
+            clearFlow5CompleteBtn: document.getElementById('clearFlow5CompleteBtn'),
+            errorClearBtn: document.getElementById('errorClearBtn'),
             autoHandshakeBtn: document.getElementById('autoHandshakeBtn'),
+            setCoordsTagenBtn: document.getElementById('setCoordsTagenBtn'),
             
-            feedingStatus: document.getElementById('feedingStatus'),
-            vpVibrationStatus: document.getElementById('vpVibrationStatus'),
-            flow4Status: document.getElementById('flow4Status'),
-            cgStatus: document.getElementById('cgStatus'),
+            // 狀態顯示
+            flow1StatusBadge: document.getElementById('flow1StatusBadge'),
+            flow5StatusBadge: document.getElementById('flow5StatusBadge'),
+            systemStatus: document.getElementById('systemStatus'),
+            autoProgramEnabled: document.getElementById('autoProgramEnabled'),
+            autoProgramStatusCard: document.getElementById('autoProgramStatusCard'),
+            prepareDone: document.getElementById('prepareDone'),
+            prepareDoneCard: document.getElementById('prepareDoneCard'),
+            errorCode: document.getElementById('errorCode'),
             
-            'cgFCount': document.getElementById('cgFCount'),
-            'cgBCount': document.getElementById('cgBCount'),
-            'stackCount': document.getElementById('stackCount'),
-            'totalDetections': document.getElementById('totalDetections'),
+            // AutoFeeding狀態
+            autofeedingStatus: document.getElementById('autofeedingStatus'),
+            afModuleStatus: document.getElementById('afModuleStatus'),
+            afCgFAvailable: document.getElementById('afCgFAvailable'),
+            afCgFAvailableDirect: document.getElementById('afCgFAvailableDirect'),
+            afCoordsTaken: document.getElementById('afCoordsTaken'),
+            flow5CompleteStatus: document.getElementById('flow5CompleteStatus'),
             
+            // CG檢測結果
+            cgFCount: document.getElementById('cgFCount'),
+            cgBCount: document.getElementById('cgBCount'),
+            stackCount: document.getElementById('stackCount'),
+            totalDetections: document.getElementById('totalDetections'),
+            
+            // Dobot狀態
             currentFlowBadge: document.getElementById('currentFlowBadge'),
-            flow1ProgressBar: document.getElementById('flow1ProgressBar'),
-            flow1ProgressText: document.getElementById('flow1ProgressText'),
-            flow5ProgressBar: document.getElementById('flow5ProgressBar'),
-            flow5ProgressText: document.getElementById('flow5ProgressText'),
+            motionProgressBar: document.getElementById('motionProgressBar'),
+            motionProgressText: document.getElementById('motionProgressText'),
+            dobotMotionStatus: document.getElementById('dobotMotionStatus'),
+            dobotFlow1Complete: document.getElementById('dobotFlow1Complete'),
+            dobotFlow5Complete: document.getElementById('dobotFlow5Complete'),
             
-            'cycleCount': document.getElementById('cycleCount'),
-            'cgFFoundCount': document.getElementById('cgFFoundCount'),
-            'vpVibrationCount': document.getElementById('vpVibrationCount'),
-            'flow4TriggerCount': document.getElementById('flow4TriggerCount'),
-            'flow1TriggerCount': document.getElementById('flow1TriggerCount'),
-            'flow5CompleteCount': document.getElementById('flow5CompleteCount'),
-            'flow4ConsecutiveCount': document.getElementById('flow4ConsecutiveCount'),
-            'vpEmptyDetectionCount': document.getElementById('vpEmptyDetectionCount'),
+            // 目標座標
+            targetX: document.getElementById('targetX'),
+            targetY: document.getElementById('targetY'),
+            targetXDirect: document.getElementById('targetXDirect'),
+            targetYDirect: document.getElementById('targetYDirect'),
             
+            // 統計
+            coordinationCycleCount: document.getElementById('coordinationCycleCount'),
+            flow1TriggerCount: document.getElementById('flow1TriggerCount'),
+            flow5CompleteCount: document.getElementById('flow5CompleteCount'),
+            cgFTakenCount: document.getElementById('cgFTakenCount'),
+            vpStatus: document.getElementById('vpStatus'),
+            
+            // 日誌
             logContainer: document.getElementById('logContainer'),
             clearLogBtn: document.getElementById('clearLogBtn')
         };
@@ -478,15 +643,20 @@
             // 連接按鈕
             elements.connectBtn.addEventListener('click', toggleConnection);
             
-            // AutoProgram控制
-            elements.startAutoProgramBtn.addEventListener('click', () => controlAutoProgram('start'));
-            elements.stopAutoProgramBtn.addEventListener('click', () => controlAutoProgram('stop'));
+            // 系統控制
+            elements.startSystemBtn.addEventListener('click', () => controlSystem('start'));
+            elements.stopSystemBtn.addEventListener('click', () => controlSystem('stop'));
+            elements.enableAutoProgramBtn.addEventListener('click', () => controlAutoProgram('enable'));
+            elements.disableAutoProgramBtn.addEventListener('click', () => controlAutoProgram('disable'));
             
             // Flow控制
-            elements.clearFlow1Btn.addEventListener('click', () => controlFlow1('clear'));
-            elements.startFlow5Btn.addEventListener('click', () => controlFlow5('start'));
-            elements.clearFlow5Btn.addEventListener('click', () => controlFlow5('clear'));
+            elements.triggerDobotFlow1Btn.addEventListener('click', () => controlDobotFlow1('trigger'));
+            elements.clearFlow1CompleteBtn.addEventListener('click', () => controlFlowComplete('clear_flow1'));
+            elements.triggerDobotFlow5Btn.addEventListener('click', () => controlDobotFlow5('trigger'));
+            elements.clearFlow5CompleteBtn.addEventListener('click', () => controlFlowComplete('clear_flow5'));
+            elements.errorClearBtn.addEventListener('click', errorClear);
             elements.autoHandshakeBtn.addEventListener('click', executeAutoHandshake);
+            elements.setCoordsTagenBtn.addEventListener('click', setCoordsToken);
             
             // 清除日誌
             elements.clearLogBtn.addEventListener('click', clearLog);
@@ -559,12 +729,32 @@
             }
         }
         
-        // AutoProgram控制
+        // 系統控制
+        async function controlSystem(action) {
+            try {
+                logMessage(`正在${action === 'start' ? '啟動' : '停止'}AutoProgram系統...`);
+                
+                const response = await fetch('/api/control/system', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: action})
+                });
+                
+                const result = await response.json();
+                logMessage(result.message);
+                
+            } catch (error) {
+                logMessage(`系統控制錯誤: ${error.message}`);
+            }
+        }
+        
+        // 自動程序控制
         async function controlAutoProgram(action) {
             try {
-                logMessage(`正在${action === 'start' ? '啟動' : '停止'}CG AutoProgram流程...`);
+                const actionText = action === 'enable' ? '啟用' : '停用';
+                logMessage(`正在${actionText}自動程序...`);
                 
-                const response = await fetch('/api/control/autoprogram', {
+                const response = await fetch('/api/control/auto_program', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({action: action})
@@ -574,36 +764,17 @@
                 logMessage(result.message);
                 
             } catch (error) {
-                logMessage(`CG AutoProgram控制錯誤: ${error.message}`);
+                logMessage(`自動程序控制錯誤: ${error.message}`);
             }
         }
         
-        // Flow1控制
-        async function controlFlow1(action) {
+        // Dobot Flow1控制
+        async function controlDobotFlow1(action) {
             try {
-                logMessage('正在清除Flow1完成狀態...');
-                
-                const response = await fetch('/api/control/flow1', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({action: action})
-                });
-                
-                const result = await response.json();
-                logMessage(result.message);
-                
-            } catch (error) {
-                logMessage(`Flow1控制錯誤: ${error.message}`);
-            }
-        }
-        
-        // Flow5控制
-        async function controlFlow5(action) {
-            try {
-                const actionText = action === 'start' ? '觸發Flow5' : '清除Flow5控制地址';
+                const actionText = action === 'trigger' ? '觸發Dobot Flow1' : '清除Dobot Flow1';
                 logMessage(`正在${actionText}...`);
                 
-                const response = await fetch('/api/control/flow5', {
+                const response = await fetch('/api/control/dobot_flow1', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({action: action})
@@ -613,7 +784,65 @@
                 logMessage(result.message);
                 
             } catch (error) {
-                logMessage(`Flow5控制錯誤: ${error.message}`);
+                logMessage(`Dobot Flow1控制錯誤: ${error.message}`);
+            }
+        }
+        
+        // Dobot Flow5控制
+        async function controlDobotFlow5(action) {
+            try {
+                const actionText = action === 'trigger' ? '觸發Dobot Flow5' : '清除Dobot Flow5';
+                logMessage(`正在${actionText}...`);
+                
+                const response = await fetch('/api/control/dobot_flow5', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: action})
+                });
+                
+                const result = await response.json();
+                logMessage(result.message);
+                
+            } catch (error) {
+                logMessage(`Dobot Flow5控制錯誤: ${error.message}`);
+            }
+        }
+        
+        // Flow完成狀態控制
+        async function controlFlowComplete(action) {
+            try {
+                const actionText = action === 'clear_flow1' ? '清除Flow1完成狀態' : '清除Flow5完成狀態';
+                logMessage(`正在${actionText}...`);
+                
+                const response = await fetch('/api/control/flow_complete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: action})
+                });
+                
+                const result = await response.json();
+                logMessage(result.message);
+                
+            } catch (error) {
+                logMessage(`Flow完成狀態控制錯誤: ${error.message}`);
+            }
+        }
+        
+        // 設置座標已讀取
+        async function setCoordsToken() {
+            try {
+                logMessage('正在設置座標已讀取標誌...');
+                
+                const response = await fetch('/api/control/coords_taken', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const result = await response.json();
+                logMessage(result.message);
+                
+            } catch (error) {
+                logMessage(`設置座標已讀取標誌錯誤: ${error.message}`);
             }
         }
         
@@ -648,6 +877,24 @@
             }
         }
         
+        // 錯誤清除
+        async function errorClear() {
+            try {
+                logMessage('正在清除錯誤...');
+                
+                const response = await fetch('/api/control/error_clear', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const result = await response.json();
+                logMessage(result.message);
+                
+            } catch (error) {
+                logMessage(`錯誤清除失敗: ${error.message}`);
+            }
+        }
+        
         // 更新連接狀態
         function updateConnectionStatus(connected) {
             isConnected = connected;
@@ -666,9 +913,11 @@
             
             // 更新按鈕狀態
             const controlButtons = [
-                elements.startAutoProgramBtn, elements.stopAutoProgramBtn,
-                elements.clearFlow1Btn, elements.startFlow5Btn, elements.clearFlow5Btn,
-                elements.autoHandshakeBtn
+                elements.startSystemBtn, elements.stopSystemBtn,
+                elements.enableAutoProgramBtn, elements.disableAutoProgramBtn,
+                elements.triggerDobotFlow1Btn, elements.clearFlow1CompleteBtn,
+                elements.triggerDobotFlow5Btn, elements.clearFlow5CompleteBtn,
+                elements.errorClearBtn, elements.autoHandshakeBtn, elements.setCoordsTagenBtn
             ];
             
             controlButtons.forEach(btn => {
@@ -678,11 +927,81 @@
         
         // 更新系統狀態
         function updateSystemStatus(status) {
-            // AutoProgram狀態
-            const autoProgramEnabled = status.auto_program_enabled;
+            // 基本系統狀態
+            elements.systemStatus.textContent = status.system_running || '未知';
+            elements.autoProgramEnabled.textContent = status.auto_program_enabled ? '啟用' : '停用';
+            elements.prepareDone.textContent = status.prepare_done ? '是' : '否';
+            elements.errorCode.textContent = status.error_code || 0;
             
-            // Flow1完成狀態
-            if (status.flow1_complete) {
+            // 更新prepare_done樣式
+            updatePrepareDoneStyle(status.prepare_done);
+            
+            // 更新自動程序啟用樣式
+            updateAutoProgramStyle(status.auto_program_enabled);
+            
+            // Flow狀態
+            updateFlowStatus(status);
+            
+            // AutoFeeding狀態
+            elements.autofeedingStatus.textContent = status.autofeeding_process_status || '未知';
+            updateAutofeedingStatusStyle(status.autofeeding_process_status);
+            elements.afModuleStatus.textContent = status.af_module_status || 0;
+            elements.afCgFAvailable.textContent = status.af_cg_f_available ? '是' : '否';
+            elements.afCgFAvailableDirect.textContent = status.af_cg_f_available_direct ? '是' : '否';
+            elements.afCoordsTaken.textContent = status.af_coords_taken ? '是' : '否';
+            elements.flow5CompleteStatus.textContent = status.flow5_complete_status ? '是' : '否';
+            
+            // CG檢測結果
+            elements.cgFCount.textContent = status.cg_f_count || 0;
+            elements.cgBCount.textContent = status.cg_b_count || 0;
+            elements.stackCount.textContent = status.stack_count || 0;
+            elements.totalDetections.textContent = status.total_detections || 0;
+            
+            // Dobot狀態
+            updateCurrentFlow(status.dobot_current_flow);
+            updateMotionProgress(status.dobot_motion_progress);
+            elements.dobotMotionStatus.textContent = status.dobot_motion_status || 0;
+            elements.dobotFlow1Complete.textContent = status.dobot_flow1_complete ? '是' : '否';
+            elements.dobotFlow5Complete.textContent = status.dobot_flow5_complete ? '是' : '否';
+            
+            // 目標座標
+            elements.targetX.textContent = (status.target_x || 0).toFixed(1);
+            elements.targetY.textContent = (status.target_y || 0).toFixed(1);
+            elements.targetXDirect.textContent = (status.target_x_direct || 0).toFixed(1);
+            elements.targetYDirect.textContent = (status.target_y_direct || 0).toFixed(1);
+            
+            // 統計資訊
+            elements.coordinationCycleCount.textContent = status.coordination_cycle_count || 0;
+            elements.flow1TriggerCount.textContent = status.flow1_trigger_count || 0;
+            elements.flow5CompleteCount.textContent = status.flow5_complete_count || 0;
+            elements.cgFTakenCount.textContent = status.cg_f_taken_count || 0;
+            elements.vpStatus.textContent = status.vp_status || 0;
+        }
+        
+        // 更新prepare_done樣式
+        function updatePrepareDoneStyle(prepareDone) {
+            elements.prepareDoneCard.className = 'stat-card';
+            if (prepareDone) {
+                elements.prepareDoneCard.classList.add('prepare-done-true');
+            } else {
+                elements.prepareDoneCard.classList.add('prepare-done-false');
+            }
+        }
+        
+        // 更新自動程序啟用樣式
+        function updateAutoProgramStyle(enabled) {
+            elements.autoProgramStatusCard.className = 'stat-card';
+            if (enabled) {
+                elements.autoProgramStatusCard.classList.add('auto-program-enabled');
+            } else {
+                elements.autoProgramStatusCard.classList.add('auto-program-disabled');
+            }
+        }
+        
+        // 更新Flow狀態
+        function updateFlowStatus(status) {
+            // Flow1狀態
+            if (status.dobot_flow1_complete) {
                 elements.flow1StatusBadge.className = 'badge bg-success';
                 elements.flow1StatusBadge.textContent = '已完成';
             } else {
@@ -690,64 +1009,34 @@
                 elements.flow1StatusBadge.textContent = '未完成';
             }
             
-            // Flow5完成狀態
-            if (status.flow5_complete) {
+            // Flow5狀態
+            if (status.dobot_flow5_complete) {
                 elements.flow5StatusBadge.className = 'badge bg-success';
                 elements.flow5StatusBadge.textContent = '已完成';
             } else {
                 elements.flow5StatusBadge.className = 'badge bg-secondary';
                 elements.flow5StatusBadge.textContent = '未完成';
             }
-            
-            // 自動供料狀態
-            updateFeedingStatus(status.feeding_process_status);
-            
-            // VP和Flow4狀態
-            elements.vpVibrationStatus.textContent = status.vp_vibration_status;
-            elements.flow4Status.textContent = status.flow4_control;
-            elements.cgStatus.textContent = status.cg_status;
-            
-            // CG檢測結果
-            elements['cgFCount'].textContent = status.cg_f_count;
-            elements['cgBCount'].textContent = status.cg_b_count;
-            elements['stackCount'].textContent = status.stack_count;
-            elements['totalDetections'].textContent = status.total_detections;
-            
-            // 當前運動Flow
-            updateCurrentFlow(status.current_motion_flow);
-            
-            // 運動進度
-            updateMotionProgress(status);
-            
-            // 統計資訊
-            elements['cycleCount'].textContent = status.cycle_count;
-            elements['cgFFoundCount'].textContent = status.cg_f_found_count;
-            elements['vpVibrationCount'].textContent = status.vp_vibration_count;
-            elements['flow4TriggerCount'].textContent = status.flow4_trigger_count;
-            elements['flow1TriggerCount'].textContent = status.flow1_trigger_count;
-            elements['flow5CompleteCount'].textContent = status.flow5_complete_count;
-            elements['flow4ConsecutiveCount'].textContent = status.flow4_consecutive_count;
-            elements['vpEmptyDetectionCount'].textContent = status.vp_empty_detection_count;
         }
         
-        // 更新自動供料狀態
-        function updateFeedingStatus(status) {
-            elements.feedingStatus.textContent = status;
-            
+        // 更新AutoFeeding狀態樣式
+        function updateAutofeedingStatusStyle(status) {
             // 移除所有狀態類
-            elements.feedingStatus.className = 'feeding-status';
+            elements.autofeedingStatus.className = 'autofeeding-status';
             
             // 根據狀態添加對應類
-            if (status.includes('停止') || status.includes('未啟動')) {
-                elements.feedingStatus.classList.add('feeding-stop');
+            if (!status || status.includes('停止')) {
+                elements.autofeedingStatus.classList.add('autofeeding-stop');
+            } else if (status.includes('運行')) {
+                elements.autofeedingStatus.classList.add('autofeeding-running');
+            } else if (status.includes('暫停')) {
+                elements.autofeedingStatus.classList.add('autofeeding-paused');
+            } else if (status.includes('檢測')) {
+                elements.autofeedingStatus.classList.add('autofeeding-detecting');
             } else if (status.includes('震動')) {
-                elements.feedingStatus.classList.add('feeding-vibrating');
-            } else if (status.includes('供應')) {
-                elements.feedingStatus.classList.add('feeding-feeding');
-            } else if (status.includes('辨識')) {
-                elements.feedingStatus.classList.add('feeding-detecting');
+                elements.autofeedingStatus.classList.add('autofeeding-vibrating');
             } else {
-                elements.feedingStatus.classList.add('feeding-running');
+                elements.autofeedingStatus.classList.add('autofeeding-running');
             }
         }
         
@@ -775,24 +1064,10 @@
         }
         
         // 更新運動進度
-        function updateMotionProgress(status) {
-            const currentFlow = status.current_motion_flow;
-            const progress = status.motion_progress;
-            
-            // 重置所有進度條
-            elements.flow1ProgressBar.style.width = '0%';
-            elements.flow1ProgressText.textContent = '0%';
-            elements.flow5ProgressBar.style.width = '0%';
-            elements.flow5ProgressText.textContent = '0%';
-            
-            // 根據當前Flow更新對應進度條
-            if (currentFlow === 1) {
-                elements.flow1ProgressBar.style.width = `${progress}%`;
-                elements.flow1ProgressText.textContent = `${progress}%`;
-            } else if (currentFlow === 5) {
-                elements.flow5ProgressBar.style.width = `${progress}%`;
-                elements.flow5ProgressText.textContent = `${progress}%`;
-            }
+        function updateMotionProgress(progress) {
+            const progressValue = progress || 0;
+            elements.motionProgressBar.style.width = `${progressValue}%`;
+            elements.motionProgressText.textContent = `${progressValue}%`;
         }
         
         // 日誌功能

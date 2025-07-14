@@ -1,0 +1,31 @@
+{
+  "autofeeding": {
+    "cycle_interval": 1.0,
+    "cg_timeout": 5.0,
+    "flow4_consecutive_limit": 5,
+    "vp_empty_check_count": 3,
+    "auto_start": true
+  },
+  "vp_params": {
+    "spread_action_code": 11,
+    "spread_strength": 60,
+    "spread_frequency": 50,
+    "spread_duration": 0.3,
+    "stop_command_code": 3,
+    "stop_delay": 0.1
+  },
+  "flow4_params": {
+    "pulse_duration": 0.1,
+    "pulse_interval": 0.05
+  },
+  "timing": {
+    "command_delay": 0.05,
+    "status_check_interval": 0.05,
+    "register_clear_delay": 0.02,
+    "vp_stabilize_delay": 0.15,
+    "flow1_check_interval": 0.1
+  },
+  "coordination": {
+    "coords_taken_timeout": 10.0
+  }
+}
