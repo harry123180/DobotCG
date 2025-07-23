@@ -78,7 +78,7 @@ class CameraConfig:
     buffer_count: int = 1  # 最小緩存
     use_latest_frame_only: bool = True  # 只保留最新幀
     
-    trigger_mode: CameraMode = CameraMode.CONTINUOUS
+    trigger_mode: CameraMode = CameraMode.SOFTWARE_TRIGGER
     auto_reconnect: bool = True
 
 
@@ -486,14 +486,21 @@ class OptimizedCamera:
     
     def trigger_software(self) -> bool:
         """軟觸發"""
-        if self.config.trigger_mode != CameraMode.TRIGGER:
+        # 修正：檢查條件，應該允許SOFTWARE_TRIGGER和TRIGGER模式
+        if self.config.trigger_mode not in [CameraMode.TRIGGER, CameraMode.SOFTWARE_TRIGGER]:
+            self.logger.error(f"相機 {self.name} 觸發模式不正確: {self.config.trigger_mode}")
             return False
         
         try:
             ret = self.camera.MV_CC_SetCommandValue("TriggerSoftware")
-            return ret == MV_OK
+            if ret == MV_OK:
+                self.logger.debug(f"相機 {self.name} 軟體觸發成功")
+                return True
+            else:
+                self.logger.error(f"相機 {self.name} 軟體觸發失敗: 0x{ret:08x}")
+                return False
         except Exception as e:
-            self.logger.error(f"相機 {self.name} 軟觸發失敗: {e}")
+            self.logger.error(f"相機 {self.name} 軟觸發異常: {e}")
             return False
     
     def disconnect(self):
@@ -677,7 +684,7 @@ class OptimizedCameraManager:
         """軟觸發指定相機"""
         if camera_names is None:
             camera_names = [name for name, cam in self.cameras.items() 
-                          if cam.config.trigger_mode == CameraMode.TRIGGER]
+                          if cam.config.trigger_mode == CameraMode.SOFTWARE_TRIGGER]
         
         results = {}
         for name in camera_names:
@@ -799,3 +806,6 @@ def shutdown_camera():
     if _global_manager is not None:
         _global_manager.shutdown()
         _global_manager = None
+
+
+# ==================== 測試代碼 ====================

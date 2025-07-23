@@ -1,0 +1,27 @@
+2025-07-23 09:24:34 [INFO] GripperHighLevelOptimized:connect:182 - 正在連接Modbus TCP服務器: 127.0.0.1:502
+2025-07-23 09:24:34 [INFO] GripperHighLevelOptimized:connect:192 - PGC夾爪Modbus連接成功
+2025-07-23 09:24:34 [INFO] GripperHighLevelOptimized:quick_close:323 - PGC快速關閉: 300
+2025-07-23 09:24:36 [WARNING] GripperHighLevelOptimized:_wait_for_completion_optimized:443 - PGC動作完成等待超時 (超時時間: 2.0秒)
+2025-07-23 09:24:36 [ERROR] GripperHighLevelOptimized:_log_gripper_status:311 - 快速關閉失敗 - 位置: 0, 夾持狀態: 0
+2025-07-23 09:24:37 [INFO] GripperHighLevelOptimized:smart_release:339 - PGC智能釋放到位置: 470
+2025-07-23 09:24:39 [WARNING] GripperHighLevelOptimized:_wait_for_completion_optimized:443 - PGC動作完成等待超時 (超時時間: 2.0秒)
+2025-07-23 09:24:39 [ERROR] GripperHighLevelOptimized:_log_gripper_status:311 - 智能釋放失敗 - 位置: 0, 夾持狀態: 0
+2025-07-23 09:24:39 [INFO] GripperHighLevelOptimized:disconnect:219 - Modbus TCP連接已斷開
+2025-07-23 09:30:07 [INFO] GripperHighLevelOptimized:connect:182 - 正在連接Modbus TCP服務器: 127.0.0.1:502
+2025-07-23 09:30:07 [INFO] GripperHighLevelOptimized:connect:192 - PGC夾爪Modbus連接成功
+2025-07-23 09:30:07 [INFO] GripperHighLevelOptimized:quick_close:323 - PGC快速關閉: 300
+2025-07-23 09:30:09 [WARNING] GripperHighLevelOptimized:_wait_for_completion_optimized:443 - PGC動作完成等待超時 (超時時間: 2.0秒)
+2025-07-23 09:30:09 [ERROR] GripperHighLevelOptimized:_log_gripper_status:311 - 快速關閉失敗 - 位置: 0, 夾持狀態: 0
+2025-07-23 09:30:10 [INFO] GripperHighLevelOptimized:smart_release:339 - PGC智能釋放到位置: 470
+2025-07-23 09:30:12 [WARNING] GripperHighLevelOptimized:_wait_for_completion_optimized:443 - PGC動作完成等待超時 (超時時間: 2.0秒)
+2025-07-23 09:30:12 [ERROR] GripperHighLevelOptimized:_log_gripper_status:311 - 智能釋放失敗 - 位置: 0, 夾持狀態: 0
+2025-07-23 09:30:12 [INFO] GripperHighLevelOptimized:disconnect:219 - Modbus TCP連接已斷開
+2025-07-23 09:30:49 [INFO] GripperHighLevelOptimized:connect:182 - 正在連接Modbus TCP服務器: 127.0.0.1:502
+2025-07-23 09:30:49 [INFO] GripperHighLevelOptimized:connect:192 - PGC夾爪Modbus連接成功
+2025-07-23 09:30:49 [INFO] GripperHighLevelOptimized:quick_close:323 - PGC快速關閉: 300
+2025-07-23 09:30:51 [WARNING] GripperHighLevelOptimized:_wait_for_completion_optimized:443 - PGC動作完成等待超時 (超時時間: 2.0秒)
+2025-07-23 09:30:51 [ERROR] GripperHighLevelOptimized:_log_gripper_status:311 - 快速關閉失敗 - 位置: 0, 夾持狀態: 0
+2025-07-23 09:30:52 [INFO] GripperHighLevelOptimized:smart_release:339 - PGC智能釋放到位置: 470
+2025-07-23 09:30:54 [WARNING] GripperHighLevelOptimized:_wait_for_completion_optimized:443 - PGC動作完成等待超時 (超時時間: 2.0秒)
+2025-07-23 09:30:54 [ERROR] GripperHighLevelOptimized:_log_gripper_status:311 - 智能釋放失敗 - 位置: 0, 夾持狀態: 0
+2025-07-23 09:30:54 [INFO] GripperHighLevelOptimized:disconnect:219 - Modbus TCP連接已斷開

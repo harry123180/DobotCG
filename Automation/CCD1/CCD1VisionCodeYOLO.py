@@ -2090,7 +2090,7 @@ class CCD1VisionController:
             }
     
     def initialize_camera(self, ip_address: str = None) -> bool:
-        """初始化相機連接"""
+        """初始化相機連接 - 適配SOFTWARE_TRIGGER模式"""
         try:
             if ip_address:
                 self.camera_ip = ip_address
@@ -2104,38 +2104,36 @@ class CCD1VisionController:
                 finally:
                     self.camera_manager = None
             
-            # 創建相機配置 - 使用新版本的配置參數
+            # 關鍵修改：創建相機配置 - SOFTWARE_TRIGGER模式
             camera_config = CameraConfig(
                 name="ccd1_camera",
                 ip=self.camera_ip,
-                exposure_time=18000.0,  # 增加曝光時間配合5FPS
+                exposure_time=18000.0,      # 調整曝光時間
                 gain=200.0,
-                frame_rate=5.0,  # 修改為5FPS
+                frame_rate=5.0,
                 pixel_format=PixelFormat.BAYER_GR8,
                 width=2592,
                 height=1944,
-                trigger_mode=CameraMode.CONTINUOUS,
+                trigger_mode=CameraMode.SOFTWARE_TRIGGER,  # ⭐軟觸發模式
                 auto_reconnect=True,
-                # 新增頻寬控制參數
-                bandwidth_limit_mbps=200,  # 200Mbps頻寬限制
-                use_latest_frame_only=True,  # 啟用最新幀模式
-                buffer_count=1  # 最小緩存
+                bandwidth_limit_mbps=200,
+                use_latest_frame_only=True,
+                buffer_count=1
             )
             
-            print(f"🔄 初始化相機: {self.camera_ip} (5FPS, 200Mbps)")
+            print(f" 初始化相機: {self.camera_ip} (SOFTWARE_TRIGGER模式)")
             self.camera_manager = OptimizedCameraManager()
             
-            # 添加相機
+            # 添加並連接相機
             success = self.camera_manager.add_camera("ccd1_camera", camera_config)
             if not success:
                 raise Exception("添加相機失敗")
             
-            # 連接相機
             connect_result = self.camera_manager.connect_camera("ccd1_camera")
             if not connect_result:
                 raise Exception("相機連接失敗")
             
-            # 開始串流
+            # 重要：SOFTWARE_TRIGGER模式需要開啟串流
             stream_result = self.camera_manager.start_streaming(["ccd1_camera"])
             if not stream_result.get("ccd1_camera", False):
                 raise Exception("開始串流失敗")
@@ -2146,24 +2144,25 @@ class CCD1VisionController:
             self.state_machine.set_initialized(True)
             self.state_machine.set_alarm(False)
             self.state_machine.set_ready(True)
-            print(f"✅ 相機初始化成功: {self.camera_ip} (頻寬控制: 200Mbps, 5FPS)")
+            print(f" 相機初始化成功: {self.camera_ip} (SOFTWARE_TRIGGER模式)")
             return True
                 
         except Exception as e:
             self.state_machine.set_alarm(True)
             self.state_machine.set_initialized(False)
             self.state_machine.set_ready(False)
-            print(f"❌ 相機初始化失敗: {e}")
+            print(f" 相機初始化失敗: {e}")
             return False
     
     def capture_image(self) -> Tuple[Optional[np.ndarray], float]:
-        """拍照"""
-        print(f"📸 開始拍照程序...")
+        """拍照 - 適配SOFTWARE_TRIGGER模式"""
+        print(f"📸 開始拍照程序 (SOFTWARE_TRIGGER模式)...")
         
         if not self.camera_manager:
             print(f"❌ 相機管理器不存在")
             return None, 0.0
-        # 檢查串流狀態
+        
+        # 檢查相機是否存在且串流中
         try:
             if "ccd1_camera" not in self.camera_manager.cameras:
                 print(f"❌ 相機 ccd1_camera 不在管理器中")
@@ -2178,39 +2177,44 @@ class CCD1VisionController:
                     return None, 0.0
                 else:
                     print(f"✅ 重新啟動串流成功")
-                    time.sleep(0.5)  # 等待串流穩定
+                    time.sleep(0.5)
             
         except Exception as stream_check_error:
             print(f"❌ 檢查串流狀態失敗: {stream_check_error}")
             return None, 0.0
-        # 檢查相機連接狀態
-        try:
-            camera_status = self.camera_manager.get_camera_status("ccd1_camera")
-            print(f"📊 相機狀態檢查: {camera_status}")
-        except Exception as status_error:
-            print(f"⚠️ 無法獲取相機狀態: {status_error}")
         
         capture_start = time.time()
         
         try:
-            print(f"🔄 調用 capture_new_frame，超時時間: 100ms")
-            frame_data = self.camera_manager.capture_new_frame("ccd1_camera", timeout=1000)
+            # ⭐軟觸發模式：先發送觸發指令
+            print(f"🔫 發送軟觸發指令...")
+            trigger_result = self.camera_manager.trigger_software(["ccd1_camera"])
+            
+            if not trigger_result.get("ccd1_camera", False):
+                print(f"❌ 軟觸發指令發送失敗")
+                return None, 0.0
+            
+            print(f"✅ 軟觸發指令發送成功")
+            
+            # ⭐等待觸發後捕獲圖像
+            print(f"🔄 等待觸發圖像，超時時間: 3000ms")
+            frame_data = self.camera_manager.capture_new_frame("ccd1_camera", timeout=3000)
             
             if frame_data is None:
                 print(f"❌ capture_new_frame 返回 None")
-                print(f"💡 可能原因:")
-                print(f"   - 相機串流未啟動")
-                print(f"   - 網路連接問題")
-                print(f"   - 超時時間過短 (100ms)")
-                print(f"   - 相機幀率問題 (設置5FPS，實際4.13FPS)")
+                print(f"💡 軟觸發模式下可能原因:")
+                print(f"   - 觸發指令執行失敗")
+                print(f"   - 相機曝光時間過長")
+                print(f"   - 網路延遲或連接問題")
                 return None, 0.0
             
             capture_time = time.time() - capture_start
-            print(f"✅ 成功捕獲幀，耗時: {capture_time*1000:.2f}ms")
+            print(f"✅ 成功捕獲觸發幀，總耗時: {capture_time*1000:.2f}ms")
             
             image_array = frame_data.data
             print(f"📊 圖像數據: 形狀={image_array.shape}, 類型={image_array.dtype}")
             
+            # 處理圖像格式轉換
             if len(image_array.shape) == 2:
                 display_image = cv2.cvtColor(image_array, cv2.COLOR_GRAY2BGR)
                 print(f"🔄 轉換灰度圖像為BGR格式")
@@ -2222,7 +2226,7 @@ class CCD1VisionController:
             
         except Exception as e:
             capture_time = time.time() - capture_start
-            print(f"❌ 拍照異常: {e}")
+            print(f"❌ 軟觸發拍照異常: {e}")
             print(f"❌ 異常類型: {type(e).__name__}")
             import traceback
             print(f"詳細錯誤堆疊: {traceback.format_exc()}")

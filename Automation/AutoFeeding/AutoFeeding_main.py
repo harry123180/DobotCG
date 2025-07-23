@@ -1,25 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-AutoFeeding_main.py - CG版本獨立入料檢測模組
+AutoFeeding_main.py - CG版本獨立入料檢測模組 (修正版 - 新增1202進度判斷)
 基地址：900-999
-功能：持續檢測CG_F在保護區域內，確保供料充足
-特性：
-- 檢測CG_F/CG_B/STACK三種物件
-- 保護區域判斷
-- VP震動盤控制
-- Flow4直振送料
-- 連續直振監控與VP清空流程
-- 獨立模組設計，避免執行緒穩定性問題
+功能：持續檢測CG_F，主動監控Flow1，新增進度判斷邏輯
+修改：監控1201當前執行Flow，當值為1時根據1202進度判斷是否暫停自動進料程序
 """
 
 import time
 import math
 import os
 import json
+import logging
 from typing import Dict, Any, Optional, Tuple, List
 from dataclasses import dataclass
 from enum import Enum
+from logging.handlers import RotatingFileHandler
 
 # Modbus TCP Client (pymodbus 3.9.2)
 try:
@@ -31,14 +27,48 @@ except ImportError:
     MODBUS_AVAILABLE = False
 
 
+def setup_logging(module_name: str) -> logging.Logger:
+    """統一設置logging配置"""
+    # 日誌目錄：執行檔同層目錄下的logs資料夾
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # 格式化器
+    formatter = logging.Formatter(
+        '%(asctime)s [%(levelname)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # 文件處理器 (輪替日誌，保存一週)
+    file_handler = RotatingFileHandler(
+        os.path.join(log_dir, f'{module_name}.log'),
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=7,          # 保留7個檔案
+        encoding='utf-8'
+    )
+    file_handler.setFormatter(formatter)
+    
+    # 控制台處理器
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    
+    # 配置logger
+    logger = logging.getLogger(module_name)
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    
+    return logger
+
+
 class AutoFeedingStatus(Enum):
     """AutoFeeding狀態"""
     STOPPED = 0
     RUNNING = 1
     FLOW1_PAUSED = 2  # Flow1執行時暫停
-    DETECTING = 3
-    VP_VIBRATING = 4
-    VP_CLEARING = 5
+    FLOW1_PROGRESS_PAUSED = 3  # Flow1進度小於44時暫停
+    DETECTING = 4
+    VP_VIBRATING = 5
     ERROR = 6
 
 
@@ -103,9 +133,13 @@ class ProtectionZone:
 
 
 class AutoFeedingModule:
-    """CG版本AutoFeeding獨立模組"""
+    """CG版本AutoFeeding獨立模組 (修正版 - 新增進度判斷)"""
     
     def __init__(self, modbus_host: str = "127.0.0.1", modbus_port: int = 502):
+        # 設置logger
+        self.logger = setup_logging("AutoFeeding_CG")
+        self.logger.info("CG版本AutoFeeding模組初始化開始")
+        
         self.modbus_host = modbus_host
         self.modbus_port = modbus_port
         self.modbus_client: Optional[ModbusTcpClient] = None
@@ -119,8 +153,10 @@ class AutoFeedingModule:
         self.VP_BASE = 300
         self.FLOW4_ADDRESS = 448
         
-        # 監控當前執行Flow地址
+        # 新增：監控1201當前執行Flow和1202進度
         self.CURRENT_MOTION_FLOW = 1201  # 當前運動Flow (0=無, 1=Flow1, 2=Flow2, 5=Flow5)
+        self.MOTION_PROGRESS = 1202      # 運動進度 (0-100百分比)
+        self.PROGRESS_THRESHOLD = 44     # 進度門檻值
         
         # 載入配置
         self.config = self.load_config()
@@ -128,11 +164,12 @@ class AutoFeedingModule:
         # 保護區域判斷
         self.protection_zone = ProtectionZone()
         
-        # 系統狀態
+        # 系統狀態 - 修正邏輯
         self.status = AutoFeedingStatus.STOPPED
         self.operation_status = OperationStatus.IDLE
         self.running = False
         self.flow1_active = False  # 監控Flow1是否正在執行
+        self.flow1_progress = 0    # 新增：Flow1進度
         self.vp_clearing_mode = False
         
         # CG_F狀態 - 核心資訊
@@ -148,26 +185,32 @@ class AutoFeedingModule:
         self.flow4_consecutive_count = 0
         self.vp_empty_detection_count = 0
         self.error_code = 0
+        self.last_cg_f_count = 0
+        self.last_background_count = 0
         
-        print(f"[AutoFeeding] CG版本獨立模組初始化 - 基地址{self.BASE_ADDRESS}")
-        print(f"[AutoFeeding] 監控當前執行Flow地址: {self.CURRENT_MOTION_FLOW}")
-        print(f"[AutoFeeding] 當1201=1時暫停自動進料程序")
-        print(f"[AutoFeeding] CG保護區域: (-86,-369.51) 到 (8.07,-244.64)")
+        self.logger.info(f"CG版本AutoFeeding獨立模組初始化 (進度判斷版) - 基地址{self.BASE_ADDRESS}")
+        self.logger.info(f"監控當前執行Flow地址: {self.CURRENT_MOTION_FLOW}")
+        self.logger.info(f"監控運動進度地址: {self.MOTION_PROGRESS}")
+        self.logger.info(f"新邏輯：當1201=1且1202<{self.PROGRESS_THRESHOLD}時暫停自動進料程序")
+        self.logger.info(f"新邏輯：當1201=1但1202>={self.PROGRESS_THRESHOLD}時啟動自動進料程序")
+        self.logger.info(f"新邏輯：當1201!=1時啟動自動進料程序")
+        self.logger.info(f"CG保護區域: (-86,-349.51) 到 (8.07,-244.64)")
     
     def load_config(self) -> Dict[str, Any]:
         """載入配置檔案"""
         default_config = {
             "autofeeding": {
-                "cycle_interval": 1.0,     # 1秒檢測週期
-                "cg_timeout": 5.0,         # CG檢測超時
-                "flow4_consecutive_limit": 5,
+                "cycle_interval": 1.0,
+                "cg_timeout": 5.0,
+                "flow4_consecutive_limit": 5,  # 這個鍵必須保留
                 "vp_empty_check_count": 3,
-                "auto_start": True         # 啟動後自動開始檢測
+                "auto_start": True,
+                "progress_threshold": 44
             },
             "vp_params": {
                 "spread_action_code": 11,
-                "spread_strength": 44,
-                "spread_frequency": 44,
+                "spread_strength": 37,
+                "spread_frequency": 42,
                 "spread_duration": 0.3,
                 "stop_command_code": 3,
                 "stop_delay": 0.1
@@ -181,10 +224,10 @@ class AutoFeedingModule:
                 "status_check_interval": 0.05,
                 "register_clear_delay": 0.02,
                 "vp_stabilize_delay": 0.15,
-                "flow1_check_interval": 0.1  # Flow1監控間隔
+                "flow1_check_interval": 0.1
             },
             "coordination": {
-                "coords_taken_timeout": 10.0  # 座標被讀取超時
+                "coords_taken_timeout": 10.0
             }
         }
         
@@ -193,22 +236,34 @@ class AutoFeedingModule:
             if os.path.exists(config_path):
                 with open(config_path, 'r', encoding='utf-8') as f:
                     loaded_config = json.load(f)
-                    default_config.update(loaded_config)
-                print(f"[AutoFeeding] 配置檔案已載入: {config_path}")
+                    
+                    # 深層合併而不是直接替換
+                    def deep_update(base_dict, update_dict):
+                        for key, value in update_dict.items():
+                            if key in base_dict and isinstance(base_dict[key], dict) and isinstance(value, dict):
+                                deep_update(base_dict[key], value)
+                            else:
+                                base_dict[key] = value
+                    
+                    deep_update(default_config, loaded_config)
+                self.logger.info(f"配置檔案已載入: {config_path}")
             else:
                 with open(config_path, 'w', encoding='utf-8') as f:
                     json.dump(default_config, f, indent=2, ensure_ascii=False)
-                print(f"[AutoFeeding] 預設配置檔案已創建: {config_path}")
+                self.logger.info(f"預設配置檔案已創建: {config_path}")
         except Exception as e:
-            print(f"[ERROR] 配置檔案處理失敗: {e}")
+            self.logger.error(f"配置檔案處理失敗: {e}", exc_info=True)
             
+        # 更新進度門檻值
+        self.PROGRESS_THRESHOLD = default_config['autofeeding'].get('progress_threshold', 44)
+        
         return default_config
     
     def connect(self) -> bool:
         """連接Modbus服務器"""
         try:
             if not MODBUS_AVAILABLE:
-                print("[ERROR] Modbus功能不可用")
+                self.logger.error("Modbus功能不可用")
                 return False
             
             self.modbus_client = ModbusTcpClient(
@@ -220,14 +275,14 @@ class AutoFeedingModule:
             self.connected = self.modbus_client.connect()
             
             if self.connected:
-                print(f"[AutoFeeding] Modbus連接成功: {self.modbus_host}:{self.modbus_port}")
+                self.logger.info(f"Modbus連接成功: {self.modbus_host}:{self.modbus_port}")
                 self.init_registers()
                 return True
             else:
-                print(f"[ERROR] Modbus連接失敗: {self.modbus_host}:{self.modbus_port}")
+                self.logger.error(f"Modbus連接失敗: {self.modbus_host}:{self.modbus_port}")
                 return False
         except Exception as e:
-            print(f"[ERROR] Modbus連接異常: {e}")
+            self.logger.error(f"Modbus連接異常: {e}", exc_info=True)
             self.connected = False
             return False
     
@@ -236,32 +291,31 @@ class AutoFeedingModule:
         if self.modbus_client and self.connected:
             self.modbus_client.close()
             self.connected = False
-            print("[AutoFeeding] Modbus連接已斷開")
+            self.logger.info("Modbus連接已斷開")
     
     def init_registers(self):
         """初始化寄存器"""
         try:
             # 狀態寄存器 (900-919)
-            self.write_register(900, AutoFeedingStatus.STOPPED.value)  # 模組狀態
-            self.write_register(901, self.cycle_count)                  # 週期計數
-            self.write_register(902, self.cg_f_found_count)            # CG_F找到次數
-            self.write_register(903, self.flow4_trigger_count)         # Flow4觸發次數
-            self.write_register(904, self.vp_vibration_count)          # VP震動次數
+            self.write_register(900, AutoFeedingStatus.STOPPED.value)
+            self.write_register(901, self.cycle_count)
+            self.write_register(902, self.cg_f_found_count)
+            self.write_register(903, self.flow4_trigger_count)
+            self.write_register(904, self.vp_vibration_count)
             self.write_register(905, 0)  # 保留
             self.write_register(906, 0)  # 保留
             self.write_register(907, 0)  # 錯誤代碼
-            self.write_register(908, OperationStatus.IDLE.value)       # 操作狀態
+            self.write_register(908, OperationStatus.IDLE.value)
             self.write_register(909, 0)  # Flow1監控狀態
+            self.write_register(910, 0)  # 新增：Flow1進度
             
-            # CG_F狀態寄存器 (940-959) - 簡化交握
-            self.write_register(940, 0)  # CG_F可用標誌 (0=無, 1=有)
+            # CG_F狀態寄存器 (940-959)
+            self.write_register(940, 0)  # CG_F可用標誌
             self.write_register(941, 0)  # CG_F座標X高位
             self.write_register(942, 0)  # CG_F座標X低位
             self.write_register(943, 0)  # CG_F座標Y高位
             self.write_register(944, 0)  # CG_F座標Y低位
-            self.write_register(945, 0)  # 座標已讀取標誌 (Flow1設置)
-            self.write_register(946, 0)  # 保留
-            self.write_register(947, 0)  # 保留
+            self.write_register(945, 0)  # 座標已讀取標誌
             
             # 配置參數寄存器 (960-979)
             self.write_register(960, int(self.config['autofeeding']['cycle_interval'] * 1000))
@@ -269,10 +323,11 @@ class AutoFeedingModule:
             self.write_register(962, self.config['vp_params']['spread_strength'])
             self.write_register(963, self.config['vp_params']['spread_frequency'])
             self.write_register(964, int(self.config['vp_params']['spread_duration'] * 1000))
+            self.write_register(965, self.PROGRESS_THRESHOLD)  # 新增：進度門檻值
             
-            print("[AutoFeeding] 寄存器初始化完成 (CG版本)")
+            self.logger.info("寄存器初始化完成 (CG版本進度判斷版)")
         except Exception as e:
-            print(f"[ERROR] 寄存器初始化失敗: {e}")
+            self.logger.error(f"寄存器初始化失敗: {e}", exc_info=True)
     
     def read_register(self, address: int) -> Optional[int]:
         """讀取單個寄存器"""
@@ -340,6 +395,7 @@ class AutoFeedingModule:
             self.write_register(907, self.error_code)
             self.write_register(908, self.operation_status.value)
             self.write_register(909, 1 if self.flow1_active else 0)
+            self.write_register(910, self.flow1_progress)  # 新增：Flow1進度
             
             # 更新CG_F狀態
             self.write_register(940, 1 if self.cg_f_available else 0)
@@ -347,35 +403,73 @@ class AutoFeedingModule:
                 self.write_32bit_register(941, 942, self.cg_f_coords[0])
                 self.write_32bit_register(943, 944, self.cg_f_coords[1])
         except Exception as e:
-            print(f"[ERROR] 狀態寄存器更新失敗: {e}")
+            self.logger.error(f"狀態寄存器更新失敗: {e}", exc_info=True)
+    
+    def should_pause_feeding(self) -> Tuple[bool, str]:
+        """判斷是否應該暫停自動進料"""
+        try:
+            current_motion_flow = self.read_register(self.CURRENT_MOTION_FLOW)
+            motion_progress = self.read_register(self.MOTION_PROGRESS)
+            
+            if current_motion_flow is None or motion_progress is None:
+                return False, "寄存器讀取失敗，繼續檢測"
+            
+            # 更新狀態
+            self.flow1_progress = motion_progress
+            
+            if current_motion_flow == 1:
+                # Flow1正在執行，檢查進度
+                if motion_progress < self.PROGRESS_THRESHOLD:
+                    return True, f"暫停原因：Flow1執行中且進度({motion_progress})<{self.PROGRESS_THRESHOLD}"
+                else:
+                    return False, f"繼續檢測：Flow1執行中但進度({motion_progress})>={self.PROGRESS_THRESHOLD}"
+            else:
+                # Flow1未執行，正常檢測
+                return False, f"正常檢測：Flow1未執行(當前Flow={current_motion_flow})"
+                
+        except Exception as e:
+            self.logger.error(f"暫停判斷失敗: {e}", exc_info=True)
+            return False, "判斷異常，繼續檢測"
     
     def check_flow1_status(self) -> bool:
-        """監控當前執行Flow狀態"""
+        """主動監控當前執行Flow狀態和進度"""
         try:
+            should_pause, reason = self.should_pause_feeding()
+            
             current_motion_flow = self.read_register(self.CURRENT_MOTION_FLOW)
             if current_motion_flow is None:
                 return False
             
-            # 檢查當前執行Flow狀態變化
             flow1_now_active = (current_motion_flow == 1)
             
+            # 根據暫停判斷更新狀態
+            if should_pause:
+                if self.status not in [AutoFeedingStatus.FLOW1_PAUSED, AutoFeedingStatus.FLOW1_PROGRESS_PAUSED]:
+                    self.logger.warning(f"暫停自動進料 - {reason}")
+                    if current_motion_flow == 1 and self.flow1_progress < self.PROGRESS_THRESHOLD:
+                        self.status = AutoFeedingStatus.FLOW1_PROGRESS_PAUSED
+                    else:
+                        self.status = AutoFeedingStatus.FLOW1_PAUSED
+            else:
+                # 確保在不暫停時設置為RUNNING狀態
+                if self.status in [AutoFeedingStatus.FLOW1_PAUSED, AutoFeedingStatus.FLOW1_PROGRESS_PAUSED]:
+                    self.logger.info(f"恢復自動進料 - {reason}")
+                    self.status = AutoFeedingStatus.RUNNING
+                elif self.status == AutoFeedingStatus.DETECTING:
+                    # 檢測完成後也要設置為RUNNING
+                    self.status = AutoFeedingStatus.RUNNING
+            
+            # 更新Flow1狀態
             if flow1_now_active != self.flow1_active:
-                # Flow1狀態變化
                 self.flow1_active = flow1_now_active
                 if self.flow1_active:
-                    print(f"[AutoFeeding] 檢測到Flow1正在執行 ({self.CURRENT_MOTION_FLOW}=1)，暫停檢測")
-                    if self.status == AutoFeedingStatus.RUNNING:
-                        self.status = AutoFeedingStatus.FLOW1_PAUSED
+                    self.logger.info(f"檢測到Flow1開始執行 (1201=1)")
                 else:
-                    print(f"[AutoFeeding] 檢測到Flow1執行完成 ({self.CURRENT_MOTION_FLOW}=0)，恢復檢測")
-                    if self.status == AutoFeedingStatus.FLOW1_PAUSED:
-                        self.status = AutoFeedingStatus.RUNNING
-                        # Flow1完成後，檢查座標是否被讀取
-                        self.check_coords_taken()
+                    self.logger.info(f"檢測到Flow1執行完成 (1201=0)")
             
             return True
         except Exception as e:
-            print(f"[ERROR] Flow1狀態檢查失敗: {e}")
+            self.logger.error(f"Flow1狀態檢查失敗: {e}", exc_info=True)
             return False
     
     def check_coords_taken(self):
@@ -386,7 +480,7 @@ class AutoFeedingModule:
         try:
             coords_taken = self.read_register(945)  # Flow1設置此標誌表示已讀取座標
             if coords_taken == 1:
-                print(f"[AutoFeeding] 座標已被Flow1讀取，清除CG_F狀態")
+                self.logger.info("座標已被Flow1讀取，清除CG_F狀態")
                 # 清除CG_F狀態，繼續檢測新的
                 self.cg_f_available = False
                 self.cg_f_coords = (0.0, 0.0)
@@ -398,9 +492,9 @@ class AutoFeedingModule:
                 for addr in [941, 942, 943, 944]:
                     self.write_register(addr, 0)
                 
-                print(f"[AutoFeeding] CG_F狀態已清除，繼續檢測新的正面物件")
+                self.logger.info("CG_F狀態已清除，繼續檢測新的正面物件")
         except Exception as e:
-            print(f"[ERROR] 座標讀取檢查失敗: {e}")
+            self.logger.error(f"座標讀取檢查失敗: {e}", exc_info=True)
     
     def check_modules_status(self) -> bool:
         """檢查CG、VP模組狀態"""
@@ -408,7 +502,7 @@ class AutoFeedingModule:
         cg_status = self.read_register(201)
         if cg_status is None:
             if self.cycle_count % 50 == 1:
-                print(f"[DEBUG] CG模組無回應")
+                self.logger.debug("CG模組無回應")
             self.error_code = 101
             return False
         
@@ -416,18 +510,18 @@ class AutoFeedingModule:
         cg_alarm = bool(cg_status & 0x04)
         cg_initialized = bool(cg_status & 0x08)
         
-        if self.cycle_count % 100 == 1:  # 減少打印頻率
-            print(f"[DEBUG] CG狀態: {cg_status} (Ready={cg_ready}, Alarm={cg_alarm}, Init={cg_initialized})")
+        if self.cycle_count % 10 == 1:
+            self.logger.debug(f"CG狀態詳細: 原始值={cg_status}, Ready={cg_ready}, Alarm={cg_alarm}, Init={cg_initialized}")
         
         if cg_alarm or not cg_initialized:
-            if self.cycle_count % 50 == 1:
-                print(f"[DEBUG] CG仍在初始化或有警報，等待...")
+            if self.cycle_count % 10 == 1:
+                self.logger.warning(f"CG狀態問題: Alarm={cg_alarm}, Initialized={cg_initialized}")
             self.error_code = 102
             return False
         
         if not cg_ready:
-            if self.cycle_count % 50 == 1:
-                print(f"[DEBUG] CG未Ready，等待...")
+            if self.cycle_count % 10 == 1:
+                self.logger.warning(f"CG未Ready: status={cg_status}")
             self.error_code = 102
             return False
         
@@ -437,13 +531,13 @@ class AutoFeedingModule:
         
         if vp_status is None or vp_connected is None:
             if self.cycle_count % 50 == 1:
-                print(f"[DEBUG] VP模組無回應")
+                self.logger.debug("VP模組無回應")
             self.error_code = 103
             return False
         
         if vp_status != 1 or vp_connected != 1:
             if self.cycle_count % 50 == 1:
-                print(f"[DEBUG] VP模組狀態異常: status={vp_status}, connected={vp_connected}")
+                self.logger.debug(f"VP模組狀態異常: status={vp_status}, connected={vp_connected}")
             self.error_code = 103
             return False
         
@@ -511,20 +605,28 @@ class AutoFeedingModule:
         return None
     
     def trigger_vp_vibration(self) -> bool:
-        """觸發VP震動"""
+        """觸發VP震動 - 使用CASE版本格式"""
         self.operation_status = OperationStatus.VP_CONTROLLING
+        self.logger.debug(f"VP震動參數: action={self.config['vp_params']['spread_action_code']}, strength={self.config['vp_params']['spread_strength']}, frequency={self.config['vp_params']['spread_frequency']}")
+        
+        spread_action_code = self.config['vp_params']['spread_action_code']  # 11
+        spread_strength = self.config['vp_params']['spread_strength']        # 37  
+        spread_frequency = self.config['vp_params']['spread_frequency']      # 42
+        command_id = int(time.time()) % 65535
         
         # 啟動震動
         success = True
-        success &= self.write_register(320, 5)  # execute_action
-        success &= self.write_register(321, self.config['vp_params']['spread_action_code'])
-        success &= self.write_register(322, self.config['vp_params']['spread_strength'])
-        success &= self.write_register(323, self.config['vp_params']['spread_frequency'])
-        success &= self.write_register(324, int(time.time()) % 65535)
+        success &= self.write_register(320, 5)                    # 執行動作指令
+        success &= self.write_register(321, spread_action_code)   # 參數1: 動作碼
+        success &= self.write_register(322, spread_strength)      # 參數2: 強度  
+        success &= self.write_register(323, spread_frequency)     # 參數3: 頻率
+        success &= self.write_register(324, command_id)          # 指令ID
         
         if not success:
             self.error_code = 301
             return False
+        
+        self.logger.info(f"VP震動啟動: 動作={spread_action_code}, 強度={spread_strength}, 頻率={spread_frequency}")
         
         # 震動持續時間
         time.sleep(self.config['vp_params']['spread_duration'])
@@ -535,14 +637,15 @@ class AutoFeedingModule:
     def stop_vp_vibration(self) -> bool:
         """停止VP震動"""
         success = True
-        success &= self.write_register(320, self.config['vp_params']['stop_command_code'])
+        success &= self.write_register(320, self.config['vp_params']['stop_command_code'])  # 停止指令
         success &= self.write_register(321, 0)
         success &= self.write_register(322, 0)
         success &= self.write_register(323, 0)
-        success &= self.write_register(324, 99)
+        success &= self.write_register(324, 99)  # 指令ID
         
         if success:
             time.sleep(self.config['vp_params']['stop_delay'])
+            self.logger.info("VP震動已停止")
         
         return success
     
@@ -575,13 +678,42 @@ class AutoFeedingModule:
         self.write_32bit_register(941, 942, coords[0])  # X座標
         self.write_32bit_register(943, 944, coords[1])  # Y座標
         
-        print(f"[AutoFeeding] CG_F已就緒: {coords}, Flow1可直接讀取座標")
+        self.logger.info(f"CG_F已就緒: {coords}, Flow1可直接讀取座標")
+    
+    def should_recheck_detection(self, current_cg_f: int, current_background: int) -> bool:
+        """
+        判斷是否需要重新檢測
+        
+        條件：
+        1. 上次CG_F>=3，這次CG_F=0
+        2. 上次背景物件>=10，這次背景物件>=2
+        
+        Args:
+            current_cg_f: 當前檢測到的CG_F數量
+            current_background: 當前背景物件數量
+            
+        Returns:
+            bool: 是否需要重新檢測
+        """
+        # 第一次檢測，沒有歷史數據
+        if not hasattr(self, 'last_cg_f_count') or not hasattr(self, 'last_background_count'):
+            return False
+        
+        # 檢查CG_F異常歸零
+        cg_f_abnormal = (self.last_cg_f_count >= 3 and current_cg_f < 1)
+        
+        # 檢查背景物件仍然存在
+        background_sufficient = (self.last_background_count >= 3 and current_background < 2)
+        
+        # 兩個條件都滿足才重檢
+        return cg_f_abnormal and background_sufficient
     
     def feeding_cycle(self) -> bool:
-        """執行一次入料檢測週期"""
+        """執行一次入料檢測週期 - CG版本完整版"""
         try:
             self.cycle_count += 1
             self.status = AutoFeedingStatus.DETECTING
+            self.error_code = 0  # 重置錯誤碼
             
             # 快速檢查模組狀態
             if not self.check_modules_status():
@@ -593,67 +725,120 @@ class AutoFeedingModule:
             # CG檢測
             detection_result = self.trigger_cg_detection()
             if not detection_result.operation_success:
-                print(f"[AutoFeeding] 週期{self.cycle_count} CG檢測失敗")
+                self.logger.warning(f"週期{self.cycle_count} CG檢測失敗")
                 return False
             
-            print(f"[AutoFeeding] 週期{self.cycle_count} 檢測結果: CG_F={detection_result.cg_f_count}, 總數={detection_result.total_detections}")
+            # 讀取CG_B和STACK數量計算背景物件
+            cg_b_count = self.read_register(241) or 0
+            stack_count = self.read_register(242) or 0
+            background_count = cg_b_count + stack_count
+            
+            # 異常檢測重檢邏輯
+            need_recheck = self.should_recheck_detection(
+                detection_result.cg_f_count, 
+                background_count
+            )
+            
+            if need_recheck:
+                self.logger.warning(f"檢測結果異常，1秒後重新檢測")
+                self.logger.warning(f"  上次CG_F={self.last_cg_f_count}, 這次CG_F={detection_result.cg_f_count}")
+                self.logger.warning(f"  上次背景={self.last_background_count}, 這次背景={background_count}")
+                
+                time.sleep(1.0)
+                
+                retry_result = self.trigger_cg_detection()
+                if retry_result.operation_success:
+                    detection_result = retry_result
+                    cg_b_count = self.read_register(241) or 0
+                    stack_count = self.read_register(242) or 0
+                    background_count = cg_b_count + stack_count
+                    
+                    self.logger.info(f"重檢結果: CG_F={detection_result.cg_f_count}, 背景物件={background_count}")
+                else:
+                    self.logger.error("重檢失敗，使用原始檢測結果")
+            
+            # 記錄當前檢測結果供下次比較
+            self.last_cg_f_count = detection_result.cg_f_count
+            self.last_background_count = background_count
+            
+            self.logger.info(f"週期{self.cycle_count} 檢測結果:")
+            self.logger.info(f"  CG_F={detection_result.cg_f_count}")
+            self.logger.info(f"  CG_B={cg_b_count}")
+            self.logger.info(f"  STACK={stack_count}")
+            self.logger.info(f"  背景物件總數={background_count}")
+            self.logger.info(f"  總檢測數={detection_result.total_detections}")
             
             # 尋找保護區域內的CG_F
             target_coords = self.find_cg_f_in_protection_zone(detection_result)
             
             if target_coords:
-                # 找到正面物件
+                # 找到正面物件 - 直接設置可用狀態
                 self.cg_f_found_count += 1
                 self.flow4_consecutive_count = 0
-                print(f"[AutoFeeding] 找到保護區內CG_F: {target_coords}")
+                self.logger.info(f"找到保護區內CG_F: {target_coords}")
                 
                 # 設置CG_F可用狀態
                 self.set_cg_f_available(target_coords)
                 
-            elif detection_result.total_detections < 4:
-                # 料件不足，觸發Flow4送料
-                print(f"[AutoFeeding] 料件不足 (總數={detection_result.total_detections}<4)，觸發Flow4送料")
-                
-                if self.trigger_flow4_feeding():
-                    self.flow4_trigger_count += 1
-                    self.flow4_consecutive_count += 1
-                    print(f"[AutoFeeding] Flow4送料完成 (連續{self.flow4_consecutive_count}次)")
-                    
-                    # 檢查連續直振限制
-                    if self.flow4_consecutive_count >= self.config['autofeeding']['flow4_consecutive_limit']:
-                        print("[AutoFeeding] 達到連續直振限制，需要VP清空")
-                        # 這裡可以加入VP清空流程或報警
+                # 檢查是否需要供料
+                if background_count < 4:
+                    self.logger.info(f"背景物件不足({background_count}<4)，但有CG_F可夾取，暫不供料")
+                    self.logger.info(f"等待Flow1夾取後再評估是否需要補料")
                 else:
-                    print(f"[AutoFeeding] Flow4送料失敗")
-                
+                    self.logger.info(f"背景物件充足({background_count}>=4)，CG_F已就緒")
             else:
-                # 料件充足但無正面，VP震動重檢
-                print(f"[AutoFeeding] 料件充足 (總數={detection_result.total_detections}>=4) 但無正面，VP震動重檢")
-                self.flow4_consecutive_count = 0
-                
-                if self.trigger_vp_vibration():
-                    self.vp_vibration_count += 1
-                    print(f"[AutoFeeding] VP震動完成，等待穩定後重新檢測")
+                # 保護區無CG_F - 根據背景物件數量決定動作
+                if background_count < 4:
+                    # 背景物件不足且無正面，觸發直振供料
+                    self.logger.info(f"背景物件不足({background_count}<4)且無CG_F，觸發Flow4直振供料")
                     
-                    # 等待穩定
-                    time.sleep(self.config['timing']['vp_stabilize_delay'])
+                    if self.trigger_flow4_feeding():
+                        self.flow4_trigger_count += 1
+                        self.flow4_consecutive_count += 1
+                        self.logger.info(f"Flow4直振供料完成 (連續{self.flow4_consecutive_count}次)")
+                        
+                        # 檢查連續直振限制
+                        flow4_limit = self.config['autofeeding'].get('flow4_consecutive_limit', 5)
+                        if self.flow4_consecutive_count >= flow4_limit:
+                            self.logger.warning("達到連續直振限制，需要VP清空處理")
+                    else:
+                        self.logger.error("Flow4直振供料失敗")
+                else:
+                    # 背景物件充足但無正面，VP震動重檢
+                    self.logger.info(f"背景物件充足({background_count}>=4)但無CG_F，VP震動散開重檢")
+                    self.flow4_consecutive_count = 0
                     
-                    # 立即重新檢測
-                    retry_result = self.trigger_cg_detection()
-                    if retry_result.operation_success:
-                        print(f"[AutoFeeding] 震動後重檢: CG_F={retry_result.cg_f_count}, 總數={retry_result.total_detections}")
-                        retry_coords = self.find_cg_f_in_protection_zone(retry_result)
-                        if retry_coords:
-                            self.cg_f_found_count += 1
-                            print(f"[AutoFeeding] 震動後找到CG_F: {retry_coords}")
-                            self.set_cg_f_available(retry_coords)
+                    if self.trigger_vp_vibration():
+                        self.vp_vibration_count += 1
+                        self.logger.info("VP震動完成，等待穩定後重新檢測")
+                        
+                        time.sleep(self.config['timing']['vp_stabilize_delay'])
+                        
+                        # 立即重新檢測
+                        retry_result = self.trigger_cg_detection()
+                        if retry_result.operation_success:
+                            retry_cg_b = self.read_register(241) or 0
+                            retry_stack = self.read_register(242) or 0
+                            retry_background = retry_cg_b + retry_stack
+                            
+                            self.logger.info(f"震動後重檢結果:")
+                            self.logger.info(f"  CG_F={retry_result.cg_f_count}")
+                            self.logger.info(f"  背景物件={retry_background}")
+                            
+                            retry_coords = self.find_cg_f_in_protection_zone(retry_result)
+                            if retry_coords:
+                                self.cg_f_found_count += 1
+                                self.logger.info(f"震動後找到CG_F: {retry_coords}")
+                                self.set_cg_f_available(retry_coords)
+                            else:
+                                self.logger.debug("震動後仍無保護區內CG_F")
             
             self.operation_status = OperationStatus.IDLE
             self.status = AutoFeedingStatus.RUNNING
             return True
             
         except Exception as e:
-            print(f"[ERROR] 入料週期異常: {e}")
+            self.logger.error(f"入料週期異常: {e}", exc_info=True)
             self.error_code = 999
             return False
     
@@ -662,8 +847,8 @@ class AutoFeedingModule:
         if self.running:
             return
         
-        print("[AutoFeeding] 啟動持續入料檢測")
-        print("[AutoFeeding] 目標：保持保護區域內始終有CG_F可用")
+        self.logger.info("啟動持續入料檢測")
+        self.logger.info("目標：保持保護區域內始終有CG_F可用")
         
         self.running = True
         self.status = AutoFeedingStatus.RUNNING
@@ -680,25 +865,29 @@ class AutoFeedingModule:
         self.status = AutoFeedingStatus.STOPPED
         self.cg_f_available = False
         self.emergency_stop_vp()
-        print("[AutoFeeding] 入料檢測已停止")
+        self.logger.info("入料檢測已停止")
     
     def emergency_stop_vp(self):
         """緊急停止VP"""
         try:
             self.stop_vp_vibration()
-            print("[AutoFeeding] VP緊急停止")
-        except:
-            pass
+            self.logger.warning("VP緊急停止")
+        except Exception as e:
+            self.logger.error(f"VP緊急停止失敗: {e}", exc_info=True)
     
     def main_loop(self):
-        """主循環"""
-        print("[AutoFeeding] CG版本主循環啟動")
-        print("[AutoFeeding] 特性：")
-        print("  ✓ 主動監控當前執行Flow狀態 (1201)")
-        print("  ✓ 當1201=1時暫停自動進料程序")
-        print("  ✓ 持續檢測確保CG_F可用")
-        print("  ✓ CG保護區域判斷")
-        print("  ✓ Flow1直接讀取座標")
+        """主循環 - CG版本修正版含進度判斷"""
+        self.logger.info("CG版本主循環啟動 (進度判斷版)")
+        self.logger.info("特性：")
+        self.logger.info("  ✓ 主動監控當前執行Flow狀態 (1201)")
+        self.logger.info("  ✓ 主動監控運動進度 (1202)")
+        self.logger.info(f"  ✓ 當1201=1且1202<{self.PROGRESS_THRESHOLD}時暫停自動進料程序")
+        self.logger.info(f"  ✓ 當1201=1但1202>={self.PROGRESS_THRESHOLD}時啟動自動進料程序")
+        self.logger.info("  ✓ 當1201!=1時啟動自動進料程序")
+        self.logger.info("  ✓ 持續檢測確保CG_F可用")
+        self.logger.info("  ✓ CG保護區域判斷")
+        self.logger.info("  ✓ Flow1直接讀取座標")
+        self.logger.info("  ✓ 異常檢測重檢邏輯")
         
         # 自動啟動檢測
         auto_start = self.config['autofeeding'].get('auto_start', True)
@@ -712,17 +901,21 @@ class AutoFeedingModule:
                 loop_count += 1
                 
                 # 定期打印狀態
-                if loop_count % 200 == 1:
-                    print(f"[DEBUG] 主循環 {loop_count}: running={self.running}, status={self.status.name}, flow1_active={self.flow1_active}, cg_f_available={self.cg_f_available}")
+                if loop_count % 2000 == 1:
+                    should_pause, reason = self.should_pause_feeding()
+                    self.logger.debug(f"主循環 {loop_count}: running={self.running}, status={self.status.name}, "
+                                    f"flow1_active={self.flow1_active}, progress={self.flow1_progress}, "
+                                    f"should_pause={should_pause}, cg_f_available={self.cg_f_available}")
+                    self.logger.debug(f"暫停原因: {reason}")
                 
                 # 檢查連接狀態
                 if not self.connected:
-                    print("[DEBUG] Modbus連接斷開，嘗試重連")
+                    self.logger.debug("Modbus連接斷開，嘗試重連")
                     if not self.connect():
                         time.sleep(5.0)
                         continue
                 
-                # 主動監控Flow1狀態
+                # 主動監控Flow1狀態和進度
                 self.check_flow1_status()
                 
                 # 檢查座標是否被讀取
@@ -732,45 +925,56 @@ class AutoFeedingModule:
                 # 更新狀態寄存器
                 self.update_status_registers()
                 
-                # 執行入料檢測 - 只有在運行且Flow1未啟動時
-                if self.running and not self.flow1_active and not self.vp_clearing_mode:
+                # 執行入料檢測 - 只有在運行且未暫停時
+                if (self.running and 
+                    self.status not in [AutoFeedingStatus.FLOW1_PAUSED, AutoFeedingStatus.FLOW1_PROGRESS_PAUSED] and 
+                    not self.vp_clearing_mode):
+                    
                     if not self.feeding_cycle():
-                        print(f"[DEBUG] 入料檢測失敗，錯誤碼: {self.error_code}")
-                        self.status = AutoFeedingStatus.ERROR
-                        time.sleep(0.5)
+                        if self.error_code == 0:
+                            # 錯誤碼0表示正常狀態下的返回False（如Flow1未執行等）
+                            # 不設置ERROR狀態，繼續檢測
+                            pass
+                        else:
+                            self.logger.debug(f"入料檢測失敗，錯誤碼: {self.error_code}")
+                            self.status = AutoFeedingStatus.ERROR
+                            time.sleep(0.5)
                     else:
                         # 檢測成功，快速進入下一輪
                         cycle_interval = self.config['autofeeding']['cycle_interval']
                         time.sleep(cycle_interval)
                 else:
-                    # 非運行狀態或Flow1執行中，短間隔檢查
+                    # 非運行狀態或暫停中，短間隔檢查
                     time.sleep(self.config['timing']['flow1_check_interval'])
                     
             except KeyboardInterrupt:
-                print("\n[AutoFeeding] 收到中斷信號，準備退出")
+                self.logger.info("收到中斷信號，準備退出")
                 break
             except Exception as e:
-                print(f"[ERROR] 主循環異常: {e}")
+                self.logger.error(f"主循環異常: {e}", exc_info=True)
                 time.sleep(1.0)
         
         # 清理資源
         self.stop_feeding()
         self.disconnect()
-        print("[AutoFeeding] 程序已退出")
+        self.logger.info("程序已退出")
 
 
 def main():
     """主程序入口"""
-    print("=== CG版本AutoFeeding獨立模組啟動 ===")
+    print("=== CG版本AutoFeeding獨立模組啟動 (進度判斷版) ===")
     print("基地址範圍: 900-999")
-    print("特性:")
-    print("  ✓ 監控當前執行Flow地址(1201)")
-    print("  ✓ 當1201=1時暫停自動進料程序")
-    print("  ✓ 持續檢測保持CG_F可用")
-    print("  ✓ CG保護區域判斷")
-    print("  ✓ Flow1直接讀取座標(940-944)")
-    print("  ✓ 自動啟動檢測")
-    print("  ✓ 獨立模組設計")
+    print("主要改進:")
+    print("  新增監控運動進度地址(1202)")
+    print("  當1201=1且1202<44時暫停自動進料程序")
+    print("  當1201=1但1202>=44時啟動自動進料程序")
+    print("  當1201!=1時啟動自動進料程序")
+    print("  持續檢測保持CG_F可用")
+    print("  CG保護區域判斷")
+    print("  Flow1直接讀取座標(940-944)")
+    print("  自動啟動檢測")
+    print("  完整logging系統")
+    print("  異常檢測重檢邏輯")
     
     # 創建AutoFeeding模組
     autofeeding = AutoFeedingModule()

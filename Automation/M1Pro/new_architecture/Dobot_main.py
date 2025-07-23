@@ -1224,20 +1224,39 @@ class DobotNewArchController:
             
             if self.config["gripper"]["enabled"]:
                 try:
-                    gripper_type = GripperType.PGE if self.config["gripper"]["type"] == "PGE" else GripperType.PGC
+                    # 檢查配置中的夾爪類型，但只支援PGC
+                    config_gripper_type = self.config["gripper"]["type"]
                     
-                    gripper_api = GripperHighLevelAPI(
-                        gripper_type=gripper_type,
-                        modbus_host=self.config["modbus"]["server_ip"],
-                        modbus_port=self.config["modbus"]["server_port"]
-                    )
-                    if gripper_api.connected:
-                        self.external_modules['gripper'] = gripper_api
-                        print("✓ 夾爪高階API連接成功")
+                    if config_gripper_type not in ["PGC"]:
+                        print(f"⚠️ 不支援的夾爪類型: {config_gripper_type}，僅支援PGC夾爪")
+                        print("⚠️ 跳過夾爪初始化")
                     else:
-                        print("⚠️ 夾爪高階API連接失敗")
+                        # 只支援PGC夾爪，移除PGE相關邏輯
+                        gripper_api = GripperHighLevelAPI(
+                            gripper_type=GripperType.PGC,
+                            modbus_host=self.config["modbus"]["server_ip"],
+                            modbus_port=self.config["modbus"]["server_port"],
+                            auto_initialize=False  # 關鍵：避免初始化卡住
+                        )
+                        
+                        if gripper_api.connected:
+                            self.external_modules['gripper'] = gripper_api
+                            print("✓ PGC夾爪高階API連接成功")
+                            
+                            # 可選：異步初始化夾爪，避免阻塞主流程
+                            try:
+                                if gripper_api.initialize(wait_completion=False):
+                                    print("✓ PGC夾爪初始化指令已發送")
+                                else:
+                                    print("⚠️ PGC夾爪初始化指令發送失敗，但連接正常")
+                            except Exception as init_e:
+                                print(f"⚠️ PGC夾爪初始化異常: {init_e}")
+                        else:
+                            print("⚠️ PGC夾爪高階API連接失敗")
+                            
                 except Exception as e:
                     print(f"⚠️ 夾爪高階API初始化失敗: {e}")
+                    print("⚠️ 系統將在無夾爪模式下運行")
             
             try:
                 angle_api = AngleHighLevel(

@@ -3,8 +3,8 @@
     "ip": "192.168.1.6",
     "dashboard_port": 29999,
     "move_port": 30003,
-    "default_speed": 50,
-    "default_acceleration": 50,
+    "default_speed": 100,
+    "default_acceleration": 100,
     "enable_collision_detection": true,
     "collision_level": 3
   },

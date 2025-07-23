@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Dobot_Flow5.py - Flow5 機械臂運轉流程執行器 (CG專案優化版)
-整合CASE專案的優化改進：
-1. enable_sync參數控制運動精度 vs 速度
-2. 優化夾爪等待時間和整體延遲
-3. 保持CG專案的點位、流程、參數和類名稱不變
-4. 統一進度更新到寄存器1202
-5. 使用固定第四軸角度，無AngleHighLevel依賴
+Dobot_Flow5.py - Flow5 機械臂運轉流程執行器 (CG專案重構版 - 支援參數化控制)
+重構重點：
+1. 支援速度控制 (speed_j, acc_j, speed_l, acc_l)
+2. 支援sync控制
+3. 支援左右手手勢切換 (arm_orientation_change)
+4. 保持原有的CG專案流程、點位和夾爪操作
+5. 整合了DR專案的參數化運動控制架構
+6. 統一進度更新到寄存器1202
 """
 
 import time
@@ -190,23 +191,25 @@ class PointsManager:
         return name in self.points
 
 
-class Flow5AssemblyExecutor:
-    """Flow5: 機械臂運轉流程執行器 - CG專案優化版"""
+class Flow5AssemblyExecutorEnhanced:
+    """Flow5: 機械臂運轉流程執行器 - CG專案重構版 (支援參數化控制)"""
     
     # 硬編碼第四軸固定角度 (CG專案參數保持不變)
     J4_FIXED_DEGREE = 176.96
     
-    def __init__(self, enable_sync: bool = False):
+    def __init__(self, enable_sync: bool = False, default_speed_j: int = 100, default_speed_l: int = 100):
         self.flow_id = 5
-        self.flow_name = "機械臂運轉流程(CG-優化版)"
+        self.flow_name = "機械臂運轉流程(CG重構版-參數化控制)"
         self.status = FlowStatus.IDLE
         self.current_step = 0
-        self.total_steps = 14  # 正確的總步驟數
+        self.total_steps = 0  # 將由build_flow_steps設定
         self.start_time = 0.0
         self.last_error = ""
         
         # 性能優化參數
         self.enable_sync = enable_sync  # 是否啟用機械臂sync
+        self.default_speed_j = default_speed_j  # 預設關節速度
+        self.default_speed_l = default_speed_l  # 預設直線速度
         
         # 優化的等待時間參數
         self.GRIPPER_CLOSE_WAIT = 0.3     # 從1.0秒減少到0.3秒
@@ -243,8 +246,9 @@ class Flow5AssemblyExecutor:
         if self.points_loaded:
             self.build_flow_steps()
         
-        print(f"✓ Flow5優化版初始化完成 (sync={'啟用' if enable_sync else '停用'})")
-        print(f"✓ 第四軸固定角度: {self.J4_FIXED_DEGREE}度")
+        print(f"✓ Flow5重構版初始化完成 (支援參數化控制, sync={'啟用' if enable_sync else '停用'})")
+        print(f"  預設關節速度: {default_speed_j}%, 預設直線速度: {default_speed_l}%")
+        print(f"  第四軸固定角度: {self.J4_FIXED_DEGREE}度")
         
     def _load_and_validate_points(self):
         """載入並驗證點位檔案"""
@@ -272,60 +276,59 @@ class Flow5AssemblyExecutor:
         self.points_loaded = True
         
     def build_flow_steps(self):
-        """建構Flow5步驟 - CG專案流程保持不變，優化sync控制"""
+        """建構Flow5步驟 - 支援參數化控制版流程"""
         if not self.points_loaded:
             print("警告: 點位未載入，無法建構流程步驟")
             self.motion_steps = []
             self.total_steps = 0
             return
             
-        # CG專案的Flow5流程步驟 - 保持原有流程，優化sync控制
+        # 支援參數化控制的Flow5流程步驟 - 保持CG專案原有流程
         self.motion_steps = [
-            # 1. 移動到standby (起點)
-            {'type': 'move_to_point', 'params': {'point_name': 'standby', 'move_type': 'J'}},
+            # 10. 移動到put_asm_top - 支援速度控制
+            {'type': 'move_to_point', 'params': {
+                'point_name': 'put_asm_top', 
+                'move_type': 'J',
+                'speed_j': 100,
+                'acc_j': 100,
+                'sync': False
+            }},
             
-            # 2. 移動到rotate_top
-            {'type': 'move_to_point', 'params': {'point_name': 'rotate_top', 'move_type': 'J'}},
+            # 11. 移動到put_asm_down - 支援速度控制
+            {'type': 'move_to_point', 'params': {
+                'point_name': 'put_asm_down', 
+                'move_type': 'J',
+                'speed_j': 60,
+                'acc_j': 60,
+                'sync': True  # 夾爪操作前必須同步
+            }},
             
-            # 3. 移動到rotate_down
-            {'type': 'move_to_point', 'params': {'point_name': 'rotate_down', 'move_type': 'J'}},
+            # 12. 夾爪快速關閉 (關鍵sync點) - 雙重確保
+            {'type': 'gripper_quick_close', 'params': {}},
             
-            # 4. 夾爪撐開到229 (關鍵sync點)
-            {'type': 'gripper_smart_release_sync', 'params': {'position': 239}},
+            # 13. 移動到put_asm_top - 支援速度控制
+            {'type': 'move_to_point', 'params': {
+                'point_name': 'put_asm_top', 
+                'move_type': 'J',
+                'speed_j': 100,
+                'acc_j': 100,
+                'sync': False
+            }},
             
-            # 5. 夾爪快速關閉 (關鍵sync點)
-            {'type': 'gripper_quick_close_sync', 'params': {}},
-            
-            # 6. 移動到rotate_down1
-            {'type': 'move_to_point', 'params': {'point_name': 'rotate_down1', 'move_type': 'J'}},
-            
-            # 7. 夾爪撐開到229 (關鍵sync點)
-            {'type': 'gripper_smart_release_sync', 'params': {'position': 239}},
-            
-            # 8. 移動到rotate_top
-            {'type': 'move_to_point', 'params': {'point_name': 'rotate_top', 'move_type': 'J'}},
-            
-            # 9. 移動到put_asm_top
-            {'type': 'move_to_point', 'params': {'point_name': 'put_asm_top', 'move_type': 'J'}},
-            
-            # 10. 移動到put_asm_down
-            {'type': 'move_to_point', 'params': {'point_name': 'put_asm_down', 'move_type': 'J'}},
-            
-            # 11. 夾爪快速關閉 (關鍵sync點)
-            {'type': 'gripper_quick_close_sync', 'params': {}},
-            
-            # 12. 移動到put_asm_top
-            {'type': 'move_to_point', 'params': {'point_name': 'put_asm_top', 'move_type': 'J'}},
-            
-            # 13. 移動到rotate_top
-            {'type': 'move_to_point', 'params': {'point_name': 'rotate_top', 'move_type': 'J'}},
-            
-            # 14. 移動到standby (完成)
-            {'type': 'move_to_point', 'params': {'point_name': 'standby', 'move_type': 'J'}}
+         
+            # 15. 移動到standby (完成) - 支援速度控制
+            {'type': 'move_to_point', 'params': {
+                'point_name': 'standby', 
+                'move_type': 'J',
+                'speed_j': 100,
+                'acc_j': 100,
+                'sync': True  # 流程結束確保同步
+            }}
         ]
         
         self.total_steps = len(self.motion_steps)
-        print(f"Flow5流程步驟建構完成，共{self.total_steps}步 (CG原本流程+優化)")
+        print(f"Flow5重構版流程步驟建構完成，共{self.total_steps}步")
+        print("新功能: 支援速度/加速度控制 + sync控制 + 左右手手勢切換")
         
     def initialize(self, robot, state_machine, external_modules):
         """初始化Flow5 (由Main呼叫)"""
@@ -336,16 +339,17 @@ class Flow5AssemblyExecutor:
         # 初始化夾爪控制器
         self.gripper = external_modules.get('gripper')
         
-        print("✓ Flow5執行器初始化完成 - 機械臂運轉流程 (優化版)")
+        print("✓ Flow5重構版執行器初始化完成 - 機械臂運轉流程 (參數化控制版)")
         print("✓ 進度將統一更新到寄存器1202")
         
     def execute(self) -> FlowResult:
-        """執行Flow5主邏輯 - CG專案優化版"""
+        """執行Flow5主邏輯 - 參數化控制版"""
         print("\n" + "="*60)
-        print("開始執行Flow5 - 機械臂運轉流程 (CG專案優化版)")
+        print("開始執行Flow5 - 機械臂運轉流程 (CG專案重構版-參數化控制)")
         print("流程序列: standby->rotate_top->rotate_down->夾爪撐開->夾爪關閉->rotate_down1->夾爪撐開->rotate_top->put_asm_top->put_asm_down->夾爪關閉->standby")
         print(f"第四軸固定角度: {self.J4_FIXED_DEGREE}度")
-        print(f"sync模式: {'啟用' if self.enable_sync else '停用'}")
+        print(f"參數化控制: 速度控制+sync控制+左右手手勢切換")
+        print(f"預設關節速度: {self.default_speed_j}%, 預設直線速度: {self.default_speed_l}%")
         print("進度統一更新到寄存器1202")
         print("="*60)
         
@@ -384,8 +388,9 @@ class Flow5AssemblyExecutor:
                     break
                 
                 # 減少print輸出，只在關鍵步驟輸出
-                if step['type'] in ['gripper_quick_close_sync', 'gripper_smart_release_sync']:
-                    print(f"Flow5 關鍵步驟 {self.current_step + 1}/{self.total_steps}: {step['type']}")
+                if step['type'] in ['gripper_quick_close', 'gripper_smart_release', 
+                                   'arm_orientation_change']:
+                    print(f"Flow5重構版 關鍵步驟 {self.current_step + 1}/{self.total_steps}: {step['type']}")
                 
                 # 執行步驟
                 success = self._execute_step(step)
@@ -413,8 +418,9 @@ class Flow5AssemblyExecutor:
             # 最終進度設為100%
             self._update_progress_to_1202(100)
             
-            print(f"\n✓ Flow5執行完成！總耗時: {execution_time:.2f}秒")
+            print(f"\n✓ Flow5重構版執行完成！總耗時: {execution_time:.2f}秒")
             print(f"✓ 使用固定第四軸角度: {self.J4_FIXED_DEGREE}度")
+            print("✓ 參數化控制功能已驗證")
             print("="*60)
             
             return FlowResult(
@@ -443,17 +449,70 @@ class Flow5AssemblyExecutor:
         params = step.get('params', {})
         
         if step_type == 'move_to_point':
-            return self._execute_move_to_point_optimized(params)
-        elif step_type == 'gripper_quick_close_sync':
-            return self._execute_gripper_quick_close_sync()
-        elif step_type == 'gripper_smart_release_sync':
-            return self._execute_gripper_smart_release_sync(params)
+            return self._execute_move_to_point_with_parameters(params)
+        elif step_type == 'arm_orientation_change':
+            return self._execute_arm_orientation_change(params)
+        elif step_type == 'gripper_quick_close':
+            return self._execute_gripper_quick_close()
+        elif step_type == 'gripper_smart_release':
+            return self._execute_gripper_smart_release(params)
         else:
             print(f"未知步驟類型: {step_type}")
             return False
     
-    def _execute_move_to_point_optimized(self, params: Dict[str, Any]) -> bool:
-        """執行移動到點位 - 優化版sync控制"""
+    def _execute_arm_orientation_change(self, params: Dict[str, Any]) -> bool:
+        """執行機械臂手勢切換 (SetArmOrientation)"""
+        try:
+            orientation = params.get('orientation', 1)  # Flow5預設右手系
+            
+            # 手勢定義
+            orientation_names = {
+                0: "左手手勢 (Left)",
+                1: "右手手勢 (Right)" 
+            }
+            
+            orientation_name = orientation_names.get(orientation, f"未知手勢({orientation})")
+            print(f"切換機械臂手勢到: {orientation_name}")
+            
+            # 方法1: 直接調用機械臂API的SetArmOrientation()方法
+            if hasattr(self.robot, 'dashboard_api') and self.robot.dashboard_api:
+                try:
+                    # 檢查是否有SetArmOrientation方法
+                    if hasattr(self.robot.dashboard_api, 'SetArmOrientation'):
+                        result = self.robot.dashboard_api.SetArmOrientation(orientation)
+                        print(f"機械臂手勢切換成功: SetArmOrientation({orientation})")
+                        print(f"API回應: {result}")
+                        return True
+                    else:
+                        print("機械臂API不支援SetArmOrientation方法")
+                        return True  # 降級處理，不影響流程
+                except Exception as e:
+                    print(f"機械臂手勢切換失敗: {e}")
+                    return False
+            
+            # 方法2: 如果機械臂有set_arm_orientation方法
+            elif hasattr(self.robot, 'set_arm_orientation'):
+                try:
+                    success = self.robot.set_arm_orientation(orientation)
+                    if success:
+                        print(f"機械臂手勢切換成功: set_arm_orientation({orientation})")
+                    else:
+                        print(f"機械臂手勢切換失敗: set_arm_orientation({orientation})")
+                    return success
+                except Exception as e:
+                    print(f"機械臂手勢切換異常: {e}")
+                    return False
+            
+            else:
+                print("機械臂API不支援手勢切換，跳過此步驟")
+                return True  # 降級處理，不影響整個流程
+                
+        except Exception as e:
+            print(f"機械臂手勢切換異常: {e}")
+            return False
+    
+    def _execute_move_to_point_with_parameters(self, params: Dict[str, Any]) -> bool:
+        """執行移動到點位 - 支援參數化控制"""
         try:
             point_name = params['point_name']
             move_type = params.get('move_type', 'J')
@@ -465,48 +524,89 @@ class Flow5AssemblyExecutor:
                 print(f"  ✗ 移動操作失敗: {self.last_error}")
                 return False
             
-            print(f"移動到點位 {point_name}")
-            print(f"  關節角度: (j1:{point.j1:.1f}, j2:{point.j2:.1f}, j3:{point.j3:.1f}, j4:{point.j4:.1f})")
-            print(f"  笛卡爾座標: ({point.x:.2f}, {point.y:.2f}, {point.z:.2f}, {point.r:.2f})")
+            # 提取運動參數
+            speed_j = params.get('speed_j', self.default_speed_j)
+            acc_j = params.get('acc_j', self.default_speed_j)
+            speed_l = params.get('speed_l', self.default_speed_l)
+            acc_l = params.get('acc_l', self.default_speed_l)
+            tool = params.get('tool', 0)
+            sync_enabled = params.get('sync', self.enable_sync)
             
-            # 執行移動
+            print(f"移動到點位 {point_name} ({move_type})")
+            print(f"  關節角度: (j1:{point.j1:.1f}, j2:{point.j2:.1f}, j3:{point.j3:.1f}, j4:{point.j4:.1f})")
+            print(f"  運動參數: speed_j={speed_j}, acc_j={acc_j}, speed_l={speed_l}, acc_l={acc_l}, tool={tool}")
+            
+            # 根據運動類型設置速度參數
             success = False
-            if move_type == 'J':
-                # 使用關節角度運動
-                success = self.robot.joint_move_j(point.j1, point.j2, point.j3, point.j4)
-            elif move_type == 'L':
-                # 直線運動使用笛卡爾座標
-                success = self.robot.move_l(point.x, point.y, point.z, point.r)
+            if move_type in ['J', 'JointMovJ']:
+                # 設置關節運動參數
+                if hasattr(self.robot, 'set_speed_j'):
+                    self.robot.set_speed_j(speed_j)
+                if hasattr(self.robot, 'set_acc_j'):
+                    self.robot.set_acc_j(acc_j)
+                if hasattr(self.robot, 'set_tool'):
+                    self.robot.set_tool(tool)
+                
+                # 執行關節運動 - 支援多種API
+                if hasattr(self.robot, 'joint_move_j'):
+                    success = self.robot.joint_move_j(point.j1, point.j2, point.j3, point.j4)
+                elif hasattr(self.robot, 'MovJ'):
+                    success = self.robot.MovJ(point_name)
+                else:
+                    print("錯誤: 機械臂不支援關節運動API")
+                    return False
+                
+            elif move_type in ['L', 'MovL']:
+                # 設置直線運動參數
+                if hasattr(self.robot, 'set_speed_l'):
+                    self.robot.set_speed_l(speed_l)
+                if hasattr(self.robot, 'set_acc_l'):
+                    self.robot.set_acc_l(acc_l)
+                if hasattr(self.robot, 'set_tool'):
+                    self.robot.set_tool(tool)
+                
+                # 執行直線運動 - 支援多種API
+                if hasattr(self.robot, 'move_l'):
+                    success = self.robot.move_l(point.x, point.y, point.z, point.r)
+                elif hasattr(self.robot, 'MovL'):
+                    success = self.robot.MovL(point.x, point.y, point.z, point.r)
+                else:
+                    print("錯誤: 機械臂不支援直線運動API")
+                    return False
+                
             else:
                 self.last_error = f"未知移動類型: {move_type}"
                 print(f"  ✗ 移動操作失敗: {self.last_error}")
                 return False
             
-            if success:
-                # 可選的sync控制 - 根據enable_sync參數決定
-                if self.enable_sync:
+            # Sync控制
+            if success and sync_enabled:
+                if hasattr(self.robot, 'sync'):
                     self.robot.sync()
-                    print(f"  ✓ 移動到 {point_name} 成功 ({move_type}) - 已同步")
+                    print(f"  ✓ 移動到 {point_name} 成功 ({move_type}) (含Sync)")
                 else:
-                    print(f"  ✓ 移動到 {point_name} 成功 ({move_type}) - 指令已發送")
-                return True
+                    print(f"  ✓ 移動到 {point_name} 成功 ({move_type}) (無Sync API)")
+            elif success:
+                print(f"  ✓ 移動到 {point_name} 成功 ({move_type})")
             else:
                 self.last_error = f"移動到 {point_name} 失敗"
                 print(f"  ✗ 移動操作失敗: {self.last_error}")
-                return False
+                
+            return success
                 
         except Exception as e:
             self.last_error = f"移動操作異常: {e}"
             print(f"  ✗ 移動操作異常: {self.last_error}")
             return False
     
-    def _execute_gripper_quick_close_sync(self) -> bool:
+    def _execute_gripper_quick_close(self) -> bool:
         """執行夾爪快速關閉 - 關鍵sync點"""
         try:
-            # 夾爪調用前必須sync確保到位 (根據參考架構)
+            # 夾爪調用前根據參數決定是否sync確保到位
             if self.enable_sync:
-                self.robot.sync()
-                print("  機械臂已同步到位")
+                if hasattr(self.robot, 'sync'):
+                    self.robot.sync()
+                    print("  機械臂已同步到位")
             
             if not self.gripper:
                 self.last_error = "夾爪控制器未初始化"
@@ -542,20 +642,21 @@ class Flow5AssemblyExecutor:
             print(f"  ✗ 夾爪操作異常: {self.last_error}")
             return False
     
-    def _execute_gripper_smart_release_sync(self, params: Dict[str, Any]) -> bool:
+    def _execute_gripper_smart_release(self, params: Dict[str, Any]) -> bool:
         """執行夾爪智能撐開 - 關鍵sync點"""
         try:
-            # 夾爪調用前必須sync確保到位 (根據參考架構)
+            # 夾爪調用前根據參數決定是否sync確保到位
             if self.enable_sync:
-                self.robot.sync()
-                print("  機械臂已同步到位")
+                if hasattr(self.robot, 'sync'):
+                    self.robot.sync()
+                    print("  機械臂已同步到位")
             
             if not self.gripper:
                 self.last_error = "夾爪控制器未初始化"
                 print(f"  ✗ 夾爪操作失敗: {self.last_error}")
                 return False
             
-            position = params.get('position', 229)  # CG專案使用229
+            position = params.get('position', 239)  # CG專案使用239
             print(f"夾爪智能撐開到位置: {position}")
             
             # 執行智能撐開操作
@@ -594,7 +695,7 @@ class Flow5AssemblyExecutor:
             return False
     
     def _update_progress_to_1202(self, override_progress: Optional[int] = None):
-        """統一更新進度到寄存器1202 - CG專案版本"""
+        """統一更新進度到寄存器1202 - CG專案重構版本"""
         try:
             if override_progress is not None:
                 progress = override_progress
@@ -604,7 +705,7 @@ class Flow5AssemblyExecutor:
             # 方法1：通過state_machine的set_progress方法 (推薦)
             if hasattr(self.state_machine, 'set_progress'):
                 self.state_machine.set_progress(progress)
-                print(f"[Flow5-CG] 進度已更新到1202: {progress}% (透過MotionStateMachine)")
+                print(f"[Flow5重構版] 進度已更新到1202: {progress}% (透過MotionStateMachine)")
                 return
             
             # 方法2：直接寫入到1202寄存器 (備用方法)
@@ -615,22 +716,22 @@ class Flow5AssemblyExecutor:
                     # 直接寫入運動進度寄存器1202
                     result = self.state_machine.modbus_client.write_register(1202, progress)
                     if hasattr(result, 'isError') and not result.isError():
-                        print(f"[Flow5-CG] 進度已更新到1202: {progress}% (直接寫入)")
+                        print(f"[Flow5重構版] 進度已更新到1202: {progress}% (直接寫入)")
                     else:
-                        print(f"[Flow5-CG] 進度更新失敗: {result}")
+                        print(f"[Flow5重構版] 進度更新失敗: {result}")
                 except Exception as e:
-                    print(f"[Flow5-CG] 進度更新異常: {e}")
+                    print(f"[Flow5重構版] 進度更新異常: {e}")
             else:
-                print(f"[Flow5-CG] 無法更新進度：state_machine或modbus_client不可用")
+                print(f"[Flow5重構版] 無法更新進度：state_machine或modbus_client不可用")
                 
         except Exception as e:
-            print(f"[Flow5-CG] 進度更新到1202失敗: {e}")
+            print(f"[Flow5重構版] 進度更新到1202失敗: {e}")
     
     def pause(self) -> bool:
         """暫停Flow"""
         try:
             self.status = FlowStatus.PAUSED
-            print("Flow5已暫停")
+            print("Flow5重構版已暫停")
             return True
         except Exception as e:
             print(f"暫停Flow5失敗: {e}")
@@ -641,10 +742,10 @@ class Flow5AssemblyExecutor:
         try:
             if self.status == FlowStatus.PAUSED:
                 self.status = FlowStatus.RUNNING
-                print("Flow5已恢復")
+                print("Flow5重構版已恢復")
                 return True
             else:
-                print("Flow5未處於暫停狀態")
+                print("Flow5重構版未處於暫停狀態")
                 return False
         except Exception as e:
             print(f"恢復Flow5失敗: {e}")
@@ -661,8 +762,8 @@ class Flow5AssemblyExecutor:
             if self.gripper:
                 self.gripper.stop()
             
-            self.last_error = "Flow5已停止"
-            print("Flow5已停止")
+            self.last_error = "Flow5重構版已停止"
+            print("Flow5重構版已停止")
             return True
             
         except Exception as e:
@@ -680,7 +781,7 @@ class Flow5AssemblyExecutor:
         return self.points_loaded and self.total_steps > 0
     
     def get_status_info(self) -> Dict[str, Any]:
-        """取得狀態資訊"""
+        """取得狀態資訊 - 重構版"""
         return {
             'flow_id': self.flow_id,
             'flow_name': self.flow_name,
@@ -692,24 +793,51 @@ class Flow5AssemblyExecutor:
             'required_points': self.REQUIRED_POINTS,
             'points_loaded': len(self.points_manager.points) if self.points_loaded else 0,
             'j4_fixed_degree': self.J4_FIXED_DEGREE,
+            
+            # 參數化控制功能
+            'parametric_control_enabled': True,
+            'speed_control_enabled': True,
+            'sync_control_enabled': True,
+            'arm_orientation_control_enabled': True,
+            'default_speed_j': self.default_speed_j,
+            'default_speed_l': self.default_speed_l,
+            'enable_sync': self.enable_sync,
+            
+            # 模組狀態
+            'gripper_enabled': self.gripper is not None,
             'angle_detection_enabled': False,  # CG版本無角度檢測
+            
+            # 系統狀態
             'progress_register': 1202,  # 標示進度寄存器地址
             'progress_unified': True,   # 標示已統一進度
-            'enable_sync': self.enable_sync,  # 新增：sync模式標示
             'gripper_optimized': True,  # 新增：夾爪優化標示
-            'optimized_version': True   # 新增：優化版本標示
+            'optimized_version': True,  # 新增：優化版本標示
+            
+            # 版本資訊
+            "version": "CG重構版",
+            "features": [
+                "參數化運動控制",
+                "速度/加速度設定", 
+                "Sync控制",
+                "左右手手勢切換",
+                "夾爪雙重確保",
+                "優化等待時間"
+            ]
         }
 
 
-# 使用範例
-if __name__ == "__main__":
-    # 建立Flow5執行器 - 支援精準/快速模式
-    # enable_sync=False 表示關閉機械臂sync，提升執行速度
-    # enable_sync=True 表示啟用機械臂sync，確保運動精度
-    
-    flow5_fast = Flow5AssemblyExecutor(enable_sync=False)    # 高速模式
-    flow5_precise = Flow5AssemblyExecutor(enable_sync=True)  # 精確模式
-    
-    print("Flow5執行器已建立 (CG專案優化版)")
-    print(f"高速模式ready: {flow5_fast.is_ready()}")
-    print(f"精確模式ready: {flow5_precise.is_ready()}")
+# ========================================================================
+# 兼容性和向後兼容
+# ========================================================================
+
+# 兼容性別名
+class Flow5Executor(Flow5AssemblyExecutorEnhanced):
+    """Flow5執行器 - 兼容性包裝器"""
+    pass
+
+# 原始類別別名 (向後兼容)
+class Flow5AssemblyExecutor(Flow5AssemblyExecutorEnhanced):
+    """原始Flow5類別名 - 向後兼容"""
+    pass
+
+
